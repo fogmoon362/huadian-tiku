@@ -1,0 +1,24 @@
+{
+  "name": "华电青年理论竞赛题库（第二期）",
+  "short_name": "华电题库",
+  "description": "华电青年理论知识网络学习竞赛题库练习系统：答题进度、错题收集、答案解析",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#f3f4f6",
+  "theme_color": "#1e3a8a",
+  "lang": "zh-CN",
+  "icons": [
+    {
+      "src": "icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
