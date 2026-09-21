@@ -862,7 +862,9 @@ function prevQ(){
 /* ---------- 全局事件 ---------- */
 /* ---------- 题目浏览 ---------- */
 function initBrowse(){
+  const newCount = QBANK.filter(q => q.isNew).length;
   document.getElementById('bSec').innerHTML = `<option value="全部">全部板块</option>` +
+    `<option value="新题">新题（${newCount} 道）</option>` +
     SECS.map(s => `<option value="${s}">${s}</option>`).join('');
   document.getElementById('bType').innerHTML = ['全部', ...TYPES].map((t,i) =>
     `<button data-bt="${t}" class="${i===0?'on':''}">${t}</button>`).join('');
@@ -903,12 +905,15 @@ function initBrowse(){
 
 function browseQuestions(){
   const kw = browse.q;
-  const wantNew = browse.scope === 'new' || kw === '新题' || kw === '新题目';
+  const kwIsNewHint = (kw === '新题' || kw === '新题目');
+  const secIsNew = (browse.sec === '新题');
+  const wantNew = browse.scope === 'new' || kwIsNewHint || secIsNew;
+  const realKw = kwIsNewHint ? '' : kw;   /* “新题”本身作为筛选条件，不再当搜索词 */
   return QBANK.filter(q =>
-    (browse.sec === '全部' || q.sec === browse.sec) &&
+    (secIsNew || browse.sec === '全部' || q.sec === browse.sec) &&
     (browse.type === '全部' || q.type === browse.type) &&
     (!wantNew || q.isNew) &&
-    (!kw || wantNew || q.text.indexOf(kw) >= 0 || q.options.some(o => o.t.indexOf(kw) >= 0))
+    (!realKw || q.text.indexOf(realKw) >= 0 || q.options.some(o => o.t.indexOf(realKw) >= 0))
   );
 }
 
@@ -1016,7 +1021,7 @@ document.getElementById('dashStartNew').addEventListener('click', ()=>{
   syncFilterUI(); buildQueue(); setView('practice');
 });
 document.getElementById('dashBrowseNew').addEventListener('click', ()=>{
-  browse.sec='全部'; browse.type='全部'; browse.scope='new'; browse.q=''; browse.shown=50;
+  browse.sec='新题'; browse.type='全部'; browse.scope='all'; browse.q=''; browse.shown=50;
   syncBrowseUI(); setView('browse');
 });
 document.getElementById('wrongRetrain').addEventListener('click', ()=>{
