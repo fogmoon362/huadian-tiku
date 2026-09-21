@@ -52,6 +52,8 @@
   .brand small { display: block; font-weight: 400; font-size: 12px; opacity: .85; margin-top: 2px; }
   .spacer { flex: 1; }
   .chips { display: flex; gap: 8px; flex-wrap: wrap; }
+  .actions { display: flex; gap: 8px; flex-wrap: wrap; }
+  .nav-toggle { display: none; }
   .chip {
     background: rgba(255,255,255,.16);
     border: 1px solid rgba(255,255,255,.25);
@@ -197,10 +199,33 @@
   .linkish { color: var(--primary); cursor: pointer; font-size: 13px; background: none; border: none; }
   .linkish:hover { text-decoration: underline; }
   .hidden { display: none !important; }
+  .practice-bar { display: flex; align-items: center; gap: 10px; margin-bottom: 10px; }
+  .practice-bar .summary {
+    flex: 1; font-size: 13px; color: var(--muted);
+    overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  }
   @media (max-width: 640px) {
+    header { padding: 8px 12px; }
+    .header-inner { gap: 6px; }
+    .brand { font-size: 15px; }
+    .brand small { display: none; }
+    .chips { display: none; }
+    .actions { display: none; width: 100%; gap: 6px; }
+    .actions.open { display: flex; }
+    .actions .btn { padding: 6px 12px; font-size: 13px; }
+    .nav-toggle { display: inline-flex; padding: 6px 12px; font-size: 13px; }
+    main { margin: 10px auto 40px; padding: 0 10px; }
+    .card { padding: 12px; }
+    .filter-bar { gap: 8px 14px; margin-bottom: 10px; }
+    .filter-bar label { font-size: 12px; margin-right: 4px; }
+    .seg button { padding: 6px 11px; font-size: 12px; }
+    .practice-head { gap: 8px; margin-bottom: 8px; }
+    .question-text { font-size: 15px; margin: 4px 0 10px; }
+    .option { padding: 9px 11px; margin-bottom: 8px; gap: 8px; }
+    .dot { width: 26px; height: 26px; font-size: 11px; }
+    .dots { gap: 4px; margin-top: 10px; }
+    .analysis textarea { min-height: 54px; }
     .bar-row .name { width: 120px; }
-    .brand { font-size: 16px; }
-    .header-inner { gap: 8px; }
   }
 </style>
 </head>
@@ -212,13 +237,14 @@
     </div>
     <div class="spacer"></div>
     <div class="chips" id="headChips"></div>
-    <div class="actions" style="display:flex;gap:8px;flex-wrap:wrap;">
+    <div class="actions" id="navActions">
       <button class="btn" id="btnDash">首页</button>
       <button class="btn primary" id="btnPractice">开始练习</button>
       <button class="btn" id="btnBrowse">题目浏览</button>
       <button class="btn" id="btnWrong">错题本</button>
       <button class="btn danger" id="btnReset">重置进度</button>
     </div>
+    <button class="btn nav-toggle" id="navToggle">☰ 菜单</button>
   </div>
 </header>
 
@@ -257,7 +283,11 @@
   <!-- 练习 -->
   <section id="viewPractice" class="hidden">
     <div class="card">
-      <div class="filter-bar">
+      <div class="practice-bar">
+        <span class="summary" id="filterSummary"></span>
+        <button class="btn small" id="btnToggleFilters">筛选设置 ▾</button>
+      </div>
+      <div class="filter-bar hidden" id="practiceFilters">
         <div>
           <label>章节</label>
           <select id="fSec"></select>
@@ -368,6 +398,25 @@ let state = loadState();
 let practice = { sec:'全部', type:'全部', mode:'seq', queue:[], idx:0, selected:new Set(), answered:false, result:null, runId:0, orders:{} };
 let browse = { sec:'全部', type:'全部', scope:'all', showAns:true, q:'', shown:50 };
 let view = 'dash';
+
+/* 手机屏幕较窄时，顶部工具栏瘦身、筛选区默认折叠，给题目留出视野 */
+function isNarrow(){ return typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth <= 640; }
+let filtersOpen = !isNarrow();
+function modeLabel(m){ return {seq:'顺序练习', random:'随机练习', new:'新题练习', wrong:'错题重练'}[m] || m; }
+function renderFilterSummary(){
+  const el = document.getElementById('filterSummary');
+  if (!el) return;
+  el.textContent = (practice.sec === '全部' ? '全部章节' : practice.sec) + ' · ' +
+    (practice.type === '全部' ? '全部题型' : practice.type) + ' · ' +
+    modeLabel(practice.mode) + ' · ' + (state.settings.shuffle ? '选项乱序' : '选项原序');
+}
+function applyFiltersVisibility(){
+  const box = document.getElementById('practiceFilters');
+  const btn = document.getElementById('btnToggleFilters');
+  if (!box || !btn) return;
+  box.classList.toggle('hidden', !filtersOpen);
+  btn.textContent = filtersOpen ? '收起筛选 ▴' : '筛选设置 ▾';
+}
 
 function loadState(){
   try {
@@ -575,17 +624,19 @@ function initFilters(){
     `<button data-m="new">新题练习</button><button data-m="wrong">错题重练</button>`;
   document.getElementById('fShuffle').innerHTML =
     `<button data-s="0" class="on">原序</button><button data-s="1">乱序</button>`;
-  document.getElementById('fSec').addEventListener('change', e => { practice.sec = e.target.value; renderPractice(); });
+  document.getElementById('fSec').addEventListener('change', e => { practice.sec = e.target.value; renderFilterSummary(); renderPractice(); });
   document.getElementById('fType').addEventListener('click', e => {
     const b = e.target.closest('button[data-t]'); if(!b) return;
     practice.type = b.dataset.t;
     document.querySelectorAll('#fType button').forEach(x=>x.classList.toggle('on', x===b));
+    renderFilterSummary();
     renderPractice();
   });
   document.getElementById('fMode').addEventListener('click', e => {
     const b = e.target.closest('button[data-m]'); if(!b) return;
     practice.mode = b.dataset.m;
     document.querySelectorAll('#fMode button').forEach(x=>x.classList.toggle('on', x===b));
+    renderFilterSummary();
     buildQueue(); renderPractice();
   });
   document.getElementById('fShuffle').addEventListener('click', e => {
@@ -599,9 +650,20 @@ function initFilters(){
     practice.answered = false;
     practice.selected = new Set();
     practice.result = null;
+    renderFilterSummary();
     renderPractice();
   });
-  document.getElementById('btnBegin').addEventListener('click', ()=>{ buildQueue(); renderPractice(); });
+  document.getElementById('btnBegin').addEventListener('click', ()=>{
+    if (isNarrow()) filtersOpen = false;      /* 手机上开始做题后自动收起筛选，腾出视野 */
+    applyFiltersVisibility();
+    renderFilterSummary();
+    buildQueue();
+    renderPractice();
+  });
+  document.getElementById('btnToggleFilters').addEventListener('click', ()=>{
+    filtersOpen = !filtersOpen;
+    applyFiltersVisibility();
+  });
   document.getElementById('btnSubmit').addEventListener('click', submitAnswer);
   document.getElementById('btnNext').addEventListener('click', nextQ);
   document.getElementById('btnPrev').addEventListener('click', prevQ);
@@ -917,6 +979,12 @@ document.getElementById('btnDash').addEventListener('click', ()=>setView('dash')
 document.getElementById('btnPractice').addEventListener('click', ()=>setView('practice'));
 document.getElementById('btnBrowse').addEventListener('click', ()=>{ syncBrowseUI(); setView('browse'); });
 document.getElementById('btnWrong').addEventListener('click', ()=>setView('wrong'));
+document.getElementById('navToggle').addEventListener('click', ()=>{
+  document.getElementById('navActions').classList.toggle('open');
+});
+document.getElementById('navActions').addEventListener('click', e=>{
+  if (e.target.closest('button')) document.getElementById('navActions').classList.remove('open');
+});
 document.getElementById('btnReset').addEventListener('click', ()=>{
   if (confirm('确定要清空所有答题记录、错题本和笔记吗？此操作不可恢复。')){
     try { localStorage.removeItem(KEY); } catch(e){ warnStorage(); }
@@ -1034,6 +1102,8 @@ initFilters();
 initBrowse();
 syncFilterUI();
 syncBrowseUI();
+renderFilterSummary();
+applyFiltersVisibility();
 renderHeader();
 renderDash();
 if (!storageOk) warnStorage();
