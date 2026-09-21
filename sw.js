@@ -1,5 +1,5 @@
 /* 离线缓存：第一次打开后，手机断网也能继续做题 */
-const CACHE = 'huadian-tiku-aee6c0ef34';
+const CACHE = 'huadian-tiku-86f4ffffa3';
 const ASSETS = [
   './',
   './index.html',
