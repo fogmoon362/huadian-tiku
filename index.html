@@ -114,6 +114,11 @@
   .tag.wrong { background: var(--bad-soft); color: var(--bad); }
   .question-text { font-size: 16px; margin: 6px 0 16px; white-space: pre-wrap; }
   .blank { color: var(--primary); font-weight: 700; }
+  .blank-line {
+    display: inline-block; min-width: 96px; height: 1.05em;
+    border-bottom: 2px solid var(--primary); vertical-align: -0.12em;
+    margin: 0 6px;
+  }
   .options { list-style: none; }
   .option {
     display: flex; gap: 10px; align-items: flex-start; border: 1.5px solid var(--border);
@@ -502,7 +507,7 @@ function renderWrong(){
     const rate = Math.round(wrongRate(q.id) * 100);
     const short = q.answer.length > 40 ? q.answer.slice(0, 40) + '…' : q.answer;
     return `<div class="wrong-item">
-      <div class="q-text">${esc(q.text)}</div>
+      <div class="q-text">${renderQuestionText(q)}</div>
       <div class="meta">
         <span>${q.type} · 第 ${q.num} 题</span>
         <span style="color:var(--bad);font-weight:700;">错误率 ${rate}%</span>
@@ -745,7 +750,7 @@ function fullStatement(q){
 /* 题干渲染：填空题的 __ 显示为填空线 */
 function renderQuestionText(q){
   let html = esc(q.text);
-  html = html.replace(/_{2,}/g, '<span class="blank">＿＿＿＿</span>');
+  html = html.replace(/_{2,}/g, '<span class="blank-line"></span>');
   html = html.replace(/（\s*）/g, '<span class="blank">（　）</span>');
   return html;
 }
