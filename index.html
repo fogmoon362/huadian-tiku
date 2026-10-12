@@ -243,6 +243,8 @@
   body.dock-hidden .dock-wrap { transform: translateY(135%) scale(.96); opacity: 0; pointer-events: none; }
   body.kb-open .dock-wrap { transform: translateY(135%); opacity: 0; pointer-events: none; }
   body.kb-open .dock-tip { display: none; }
+  /* 菜单让位时，上方那条名称提示也要一起收掉，别只剩文字悬在那儿 */
+  body.dock-hidden .dock-tip { display: none; }
   @keyframes dockPop {
     0%   { transform: translateY(125%) scale(.94); opacity: 0; }
     55%  { transform: translateY(-7px) scale(1.035); opacity: 1; }
@@ -821,7 +823,6 @@ function setView(v){
   if (v === 'browse') renderBrowse();
   syncDock();
   /* 切换板块一定把菜单请回来，避免上一页让位后一直不出现 */
-  clearTimeout(dockBackTimer);
   setDockHidden(false);
   /* 视图从隐藏变为可见后重新测量高亮块，避免首个选项看不到字 */
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => refreshPills(false));
@@ -834,6 +835,9 @@ function initDock(){
   if (!dock) return;
   const items = [...dock.querySelectorAll('.dock-item')];
   const RANGE = 92;
+  /* 只有真正支持悬停的设备才显示名称气泡：手机上点一下会派发 mousemove，
+   * 之前气泡弹出来就再也没人收回去，于是“图标走了文字还在”。 */
+  const canHover = !!(window.matchMedia && window.matchMedia('(hover: hover)').matches);
   dock.addEventListener('mousemove', e => {
     const x = e.clientX;
     items.forEach(el => {
@@ -848,11 +852,13 @@ function initDock(){
       const r = el.getBoundingClientRect();
       return x >= r.left && x <= r.right;
     });
-    if (hovered){
+    if (hovered && canHover){
       tip.textContent = hovered.dataset.name;
       const r = hovered.getBoundingClientRect();
       tip.style.left = (r.left + r.width / 2) + 'px';
       tip.classList.add('show');
+      clearTimeout(initDock._tipH);
+      initDock._tipH = setTimeout(() => tip.classList.remove('show'), 1600);
     }
   });
   dock.addEventListener('mouseleave', () => {
@@ -873,8 +879,11 @@ function syncDock(){
     el.classList.toggle('active', el.dataset.act === view);
   });
 }
-/* ---------- 底部菜单自动让位：滑动/答题时收起，需要时再回来 ---------- */
-var dockBackTimer = null;
+/* ---------- 底部菜单自动让位：滑动/答题时收起，需要时再手动叫回来 ---------- */
+function hideDockTip(){
+  const tip = document.getElementById('dockTip');
+  if (tip) tip.classList.remove('show');
+}
 function popDock(){
   const wrap = document.querySelector('.dock-wrap');
   if (!wrap) return;
@@ -894,46 +903,35 @@ function setDockHidden(hide){
       clearTimeout(popDock._h);
       wrap.classList.remove('pop');
     }
+    hideDockTip();
     if (!isHidden) document.body.classList.add('dock-hidden');
   } else if (isHidden){
     document.body.classList.remove('dock-hidden');
     popDock();                    /* 回位时弹一下 */
   }
 }
-/* 答题等操作后先让位，过一会儿自动回来 */
-function nudgeDockAway(ms){
-  setDockHidden(true);
-  clearTimeout(dockBackTimer);
-  dockBackTimer = setTimeout(() => setDockHidden(false), ms || 1800);
-}
+/* 答题等操作时让位。不再设倒计时自动回来，只在“往上滑 / 点底部把手 / 换板块 / 键盘收起”时回来 */
+function nudgeDockAway(){ setDockHidden(true); }
 function initDockAutoHide(){
   if (typeof window === 'undefined' || !window.addEventListener) return;
   const pageY = () => window.pageYOffset ||
     (document.documentElement && document.documentElement.scrollTop) ||
     (document.body && document.body.scrollTop) || 0;
   let lastY = pageY();
-  const backSoon = () => {
-    clearTimeout(dockBackTimer);
-    dockBackTimer = setTimeout(() => setDockHidden(false), 900);
-  };
   window.addEventListener('scroll', () => {
     const y = pageY();
     const dy = y - lastY;
     lastY = y;
     if (dy <= -3 || y < 60) setDockHidden(false);  /* 往上滑或已在顶部：立刻回来 */
     else if (dy >= 3) setDockHidden(true);         /* 往下滑：让位 */
-    backSoon();                                    /* 停下来一会儿也自动回来 */
   }, { passive: true });
 
   const handle = document.getElementById('dockHandle');
-  if (handle) handle.addEventListener('click', () => {
-    clearTimeout(dockBackTimer);
-    setDockHidden(false);
-  });
+  if (handle) handle.addEventListener('click', () => setDockHidden(false));
 
-  /* 答题过程中的点击（选项、提交、下一题、题号…）都让位，随后自动回来 */
+  /* 答题过程中的点击（选项、提交、下一题、题号…）都让位 */
   const vp = document.getElementById('viewPractice');
-  if (vp) vp.addEventListener('click', () => nudgeDockAway(1800), true);
+  if (vp) vp.addEventListener('click', () => nudgeDockAway(), true);
 }
 
 /* ---------- 手机上弹输入法时收起底部菜单，键盘收起来再还原 ---------- */
@@ -960,11 +958,8 @@ function initKeyboardHide(){
     }
     const wasOpen = document.body.classList.contains('kb-open');
     document.body.classList.toggle('kb-open', hide);
-    /* 键盘收起后一定把菜单请回来（哪怕刚接完题还在“让位”倒计时里） */
-    if (wasOpen && !hide){
-      clearTimeout(dockBackTimer);
-      setDockHidden(false);
-    }
+    /* 键盘收起后一定把菜单请回来（做题时让位过也一样） */
+    if (wasOpen && !hide) setDockHidden(false);
   };
   const soon = () => setTimeout(apply, 60);
   document.addEventListener('focusin', soon, true);
