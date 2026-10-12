@@ -1,24 +1,49 @@
 {
+  "id": "./",
   "name": "运维部10月业务知识考试题",
   "short_name": "运维题库",
   "description": "运维部10月业务知识考试题库：单选/多选/判断/填空/简答/问答，含答题进度、错题收集与答案解析",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "any",
   "background_color": "#edf3ff",
   "theme_color": "#123a8c",
   "lang": "zh-CN",
+  "dir": "ltr",
+  "categories": ["education", "productivity"],
+  "prefer_related_applications": false,
   "icons": [
     {
       "src": "icons/icon-192.png",
       "sizes": "192x192",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
     },
     {
       "src": "icons/icon-512.png",
       "sizes": "512x512",
-      "type": "image/png"
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icons/icon-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "icons/apple-touch-icon.png",
+      "sizes": "180x180",
+      "type": "image/png",
+      "purpose": "any"
     }
   ]
 }
