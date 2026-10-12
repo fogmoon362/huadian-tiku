@@ -89,13 +89,24 @@
   .bar-row .pct { width: 56px; text-align: right; font-size: 13px; color: var(--muted); }
   .filter-bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 16px; }
   .filter-bar label { font-size: 13px; color: var(--muted); margin-right: 6px; }
-  .seg { display: inline-flex; border: 1px solid var(--border); border-radius: 8px; overflow: hidden; }
-  .seg button {
-    border: none; background: #fff; padding: 7px 14px; font-size: 13px; cursor: pointer; color: var(--text);
-    border-right: 1px solid var(--border);
+  .seg {
+    position: relative; display: inline-flex; border: 1px solid var(--border);
+    border-radius: 9px; overflow: hidden; background: #fff;
   }
-  .seg button:last-child { border-right: none; }
-  .seg button.on { background: var(--primary); color: #fff; }
+  .seg .pill {
+    position: absolute; top: 0; left: 0; height: 100%; width: 0; border-radius: 7px;
+    background: linear-gradient(135deg, #3b82f6, #6366f1); z-index: 0; pointer-events: none;
+    transition: transform .38s cubic-bezier(.34,1.56,.64,1), width .38s cubic-bezier(.34,1.56,.64,1);
+  }
+  .seg button {
+    position: relative; z-index: 1; border: none; background: transparent; padding: 7px 14px;
+    font-size: 13px; cursor: pointer; color: var(--text); white-space: nowrap;
+    transition: color .25s;
+  }
+  .seg button.on { color: #fff; font-weight: 600; }
+  .seg.scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
+  .seg.scroll::-webkit-scrollbar { height: 4px; }
+  .seg.scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 2px; }
   select, input[type=search], input[type=text], textarea {
     padding: 7px 10px; border: 1px solid var(--border); border-radius: 8px; font-size: 14px; background: #fff;
     font-family: inherit;
@@ -165,6 +176,26 @@
   .dot.err { background: var(--bad-soft); border-color: #fca5a5; color: var(--bad); }
   .dot.cur { outline: 2px solid var(--primary); }
   .dot.dim { opacity: .45; }
+  .qnav { margin-top: 14px; border-top: 1px dashed var(--border); padding-top: 12px; }
+  .qnav-head { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .qnav-head .qnav-title { font-size: 14px; font-weight: 700; }
+  .qnav-head .qnav-info { font-size: 12.5px; color: var(--muted); }
+  .qnav-head .jump {
+    width: 92px; padding: 5px 9px; font-size: 13px; border: 1px solid var(--border);
+    border-radius: 8px; background: #fff;
+  }
+  .qnav-body { margin-top: 10px; }
+  .qnav-body.hidden { display: none; }
+  .dots { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 0; }
+  .pager { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin-top: 12px; }
+  .pgbtn {
+    min-width: 34px; height: 30px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--border);
+    background: #fff; color: var(--text); font-size: 12.5px; cursor: pointer;
+  }
+  .pgbtn:hover { border-color: #93c5fd; }
+  .pgbtn.on { background: var(--primary); border-color: var(--primary); color: #fff; font-weight: 700; }
+  .pgbtn:disabled { opacity: .45; cursor: not-allowed; }
+  .pgdots { color: var(--muted); padding: 0 2px; }
   .wrong-item { border: 1px solid var(--border); border-radius: 10px; padding: 12px 14px; margin-bottom: 10px; background: #fff; }
   .wrong-item .q-text { font-size: 14px; }
   .wrong-item .meta { font-size: 12px; color: var(--muted); margin-top: 4px; display: flex; gap: 10px; flex-wrap: wrap; }
@@ -256,7 +287,7 @@
       <div class="filter-bar hidden" id="practiceFilters">
         <div>
           <label>题型</label>
-          <select id="fSec"></select>
+          <span class="seg scroll" id="fSec"></span>
         </div>
         <div>
           <label>模式</label>
@@ -282,7 +313,20 @@
         <div id="qAnswerArea"></div>
         <div class="actions-row" id="answerActions"></div>
         <div id="feedback" class="hidden"></div>
-        <div class="dots" id="qDots"></div>
+        <div class="qnav">
+          <div class="qnav-head">
+            <span class="qnav-title">选题</span>
+            <span class="qnav-info" id="navInfo"></span>
+            <span class="spacer"></span>
+            <input class="jump" id="jumpInput" type="number" min="1" placeholder="跳转题号">
+            <button class="btn small" id="btnJump">跳转</button>
+            <button class="btn small ghost" id="btnNavToggle">收起</button>
+          </div>
+          <div class="qnav-body" id="qnavBody">
+            <div class="dots" id="qDots"></div>
+            <div class="pager" id="qPager"></div>
+          </div>
+        </div>
       </div>
       <div id="practiceEmpty" class="empty-tip hidden"></div>
     </div>
@@ -306,7 +350,7 @@
       <div class="filter-bar">
         <div>
           <label>题型</label>
-          <select id="bSec"></select>
+          <span class="seg scroll" id="bSec"></span>
         </div>
         <div>
           <label>答案</label>
@@ -336,9 +380,10 @@ const TYPE_CLS = {'单选题':'single','多选题':'multi','判断题':'judge','
 const LETTERS = ['A','B','C','D','E','F','G','H'];
 let storageOk = true, storageWarned = false;
 let state = loadState();
-let practice = { sec:'全部', mode:'seq', queue:[], idx:0, selected:new Set(), answered:false, result:null, runId:0, orders:{} };
+let practice = { sec:'全部', mode:'seq', queue:[], idx:0, selected:new Set(), answered:false, result:null, runId:0, orders:{}, navPage:0 };
 let browse = { sec:'全部', showAns:true, q:'', shown:50 };
 let filtersOpen = !isNarrow();
+let navOpen = !isNarrow();
 let view = 'dash';
 function isNarrow(){ return typeof window !== 'undefined' && window.innerWidth > 0 && window.innerWidth <= 640; }
 
@@ -525,6 +570,34 @@ function renderWrong(){
 
 /* ---------- 练习 ---------- */
 function modeLabel(m){ return {seq:'顺序练习', random:'随机练习', wrong:'错题重练'}[m] || m; }
+/* ---------- 分段控件滑动高亮块 ---------- */
+function ensurePill(seg){
+  let pill = null;
+  for (let i = 0; i < seg.children.length; i++){
+    if (seg.children[i].classList && seg.children[i].classList.contains('pill')){ pill = seg.children[i]; break; }
+  }
+  if (!pill){
+    pill = document.createElement('span');
+    pill.className = 'pill';
+    seg.insertBefore(pill, seg.firstChild);
+  }
+  return pill;
+}
+function movePill(seg, animate){
+  if (!seg) return;
+  const pill = ensurePill(seg);
+  const btn = seg.querySelector('button.on');
+  if (!btn){ pill.style.width = '0px'; return; }
+  const sr = seg.getBoundingClientRect(), br = btn.getBoundingClientRect();
+  const left = br.left - sr.left + (seg.scrollLeft || 0);
+  if (animate === false) pill.style.transition = 'none';
+  pill.style.width = br.width + 'px';
+  pill.style.transform = 'translate(' + left + 'px,0)';
+  if (animate === false){ void pill.offsetWidth; pill.style.transition = ''; }
+}
+function refreshPills(animate){
+  document.querySelectorAll('.seg').forEach(seg => movePill(seg, animate));
+}
 function renderFilterSummary(){
   const el = document.getElementById('filterSummary');
   if (!el) return;
@@ -539,19 +612,25 @@ function applyFiltersVisibility(){
   btn.textContent = filtersOpen ? '收起筛选 ▴' : '筛选设置 ▾';
 }
 function initFilters(){
-  document.getElementById('fSec').innerHTML = `<option value="全部">全部题型</option>` +
-    TYPES.map(t => `<option value="${t}">${t}（${QBANK.filter(q => q.type === t).length}）</option>`).join('');
+  document.getElementById('fSec').innerHTML = ['全部', ...TYPES].map((t, i) =>
+    `<button data-t="${t}" class="${i === 0 ? 'on' : ''}">` +
+    (t === '全部' ? '全部题型' : t + '（' + QBANK.filter(q => q.type === t).length + '）') + '</button>').join('');
   document.getElementById('fMode').innerHTML =
     `<button data-m="seq" class="on">顺序练习</button><button data-m="random">随机练习</button><button data-m="wrong">错题重练</button>`;
   document.getElementById('fShuffle').innerHTML =
     `<button data-s="0" class="on">原序</button><button data-s="1">乱序</button>`;
-  document.getElementById('fSec').addEventListener('change', e => {
-    practice.sec = e.target.value; renderFilterSummary(); renderPractice();
+  document.getElementById('fSec').addEventListener('click', e => {
+    const b = e.target.closest('button[data-t]'); if (!b) return;
+    practice.sec = b.dataset.t;
+    document.querySelectorAll('#fSec button').forEach(x => x.classList.toggle('on', x === b));
+    movePill(document.getElementById('fSec'));
+    renderFilterSummary(); renderPractice();
   });
   document.getElementById('fMode').addEventListener('click', e => {
     const b = e.target.closest('button[data-m]'); if(!b) return;
     practice.mode = b.dataset.m;
     document.querySelectorAll('#fMode button').forEach(x => x.classList.toggle('on', x === b));
+    movePill(document.getElementById('fMode'));
     renderFilterSummary(); buildQueue(); renderPractice();
   });
   document.getElementById('fShuffle').addEventListener('click', e => {
@@ -559,9 +638,18 @@ function initFilters(){
     state.settings.shuffle = b.dataset.s === '1';
     saveState();
     document.querySelectorAll('#fShuffle button').forEach(x => x.classList.toggle('on', x === b));
+    movePill(document.getElementById('fShuffle'));
     practice.orders = {}; practice.runId++;
     practice.answered = false; practice.selected = new Set(); practice.result = null;
     renderFilterSummary(); renderPractice();
+  });
+  document.getElementById('btnNavToggle').addEventListener('click', () => {
+    navOpen = !navOpen;
+    applyNavVisibility();
+  });
+  document.getElementById('btnJump').addEventListener('click', doJump);
+  document.getElementById('jumpInput').addEventListener('keydown', e => {
+    if (e.key === 'Enter'){ e.preventDefault(); doJump(); }
   });
   document.getElementById('btnToggleFilters').addEventListener('click', () => {
     filtersOpen = !filtersOpen; applyFiltersVisibility();
@@ -587,6 +675,30 @@ function buildQueue(){
   practice.result = null;
   practice.runId++;
   practice.orders = {};
+  practice.navPage = 0;
+}
+/* ---------- 选题面板（分页，避免题号过密） ---------- */
+const NAV_PER_PAGE = 50;
+function applyNavVisibility(){
+  const body = document.getElementById('qnavBody');
+  const btn = document.getElementById('btnNavToggle');
+  if (!body || !btn) return;
+  body.classList.toggle('hidden', !navOpen);
+  btn.textContent = navOpen ? '收起' : '展开选题';
+}
+function doJump(){
+  const inp = document.getElementById('jumpInput');
+  if (!inp || !practice.queue.length) return;
+  const n = parseInt(inp.value, 10);
+  if (!n || n < 1 || n > practice.queue.length){
+    showToast('请输入 1 ~ ' + practice.queue.length + ' 之间的题号');
+    return;
+  }
+  practice.idx = n - 1;
+  practice.answered = false; practice.revealed = false;
+  practice.selected = new Set(); practice.result = null;
+  renderPractice();
+  inp.value = '';
 }
 function renderPractice(){
   const qs = practice.queue;
@@ -818,14 +930,49 @@ function renderFeedback(q){
 }
 function renderDots(){
   const box = document.getElementById('qDots');
-  box.innerHTML = practice.queue.map((q, i) => {
-    const r = state.records[q.id];
+  const pager = document.getElementById('qPager');
+  const info = document.getElementById('navInfo');
+  const qs = practice.queue;
+  if (!qs.length){ box.innerHTML = ''; pager.innerHTML = ''; if (info) info.textContent = ''; return; }
+  const pages = Math.max(1, Math.ceil(qs.length / NAV_PER_PAGE));
+  const curPage = Math.floor(practice.idx / NAV_PER_PAGE);
+  practice.navPage = curPage;
+  const start = curPage * NAV_PER_PAGE;
+  const end = Math.min(qs.length, start + NAV_PER_PAGE);
+  if (info) info.textContent = `第 ${start + 1}–${end} 题 / 共 ${qs.length} 题（第 ${curPage + 1} / ${pages} 页）`;
+  let html = '';
+  for (let i = start; i < end; i++){
+    const q = qs[i], r = state.records[q.id];
     let cls = '';
     if (r && r.attempts) cls = r.last === 'correct' ? 'done' : 'err';
-    return `<div class="dot ${cls} ${i === practice.idx ? 'cur' : ''} ${practice.queue.length > 40 ? 'dim' : ''}" data-i="${i}">${i+1}</div>`;
-  }).join('');
+    html += `<div class="dot ${cls} ${i === practice.idx ? 'cur' : ''}" data-i="${i}">${i + 1}</div>`;
+  }
+  box.innerHTML = html;
   box.querySelectorAll('.dot').forEach(d => d.addEventListener('click', () => {
     practice.idx = +d.dataset.i;
+    practice.answered = false; practice.revealed = false;
+    practice.selected = new Set(); practice.result = null;
+    renderPractice();
+  }));
+  let pg = '';
+  if (pages > 1){
+    pg += `<button class="pgbtn" data-p="prev" ${curPage === 0 ? 'disabled' : ''}>上一页</button>`;
+    for (let p = 0; p < pages; p++){
+      const show = pages <= 10 || p === 0 || p === pages - 1 || Math.abs(p - curPage) <= 1;
+      if (show) pg += `<button class="pgbtn ${p === curPage ? 'on' : ''}" data-p="${p}">${p + 1}</button>`;
+      else if (!/pgdots">…/.test(pg)) pg += `<span class="pgdots">…</span>`;
+    }
+    pg += `<button class="pgbtn" data-p="next" ${curPage === pages - 1 ? 'disabled' : ''}>下一页</button>`;
+  }
+  pager.innerHTML = pg;
+  pager.querySelectorAll('.pgbtn').forEach(b => b.addEventListener('click', () => {
+    if (b.disabled) return;
+    const p = b.dataset.p;
+    let target = curPage;
+    if (p === 'prev') target = Math.max(0, curPage - 1);
+    else if (p === 'next') target = Math.min(pages - 1, curPage + 1);
+    else target = +p;
+    practice.idx = target * NAV_PER_PAGE;
     practice.answered = false; practice.revealed = false;
     practice.selected = new Set(); practice.result = null;
     renderPractice();
@@ -852,15 +999,23 @@ function prevQ(){
 
 /* ---------- 题目浏览 ---------- */
 function initBrowse(){
-  document.getElementById('bSec').innerHTML = `<option value="全部">全部题型</option>` +
-    TYPES.map(t => `<option value="${t}">${t}（${QBANK.filter(q => q.type === t).length}）</option>`).join('');
+  document.getElementById('bSec').innerHTML = ['全部', ...TYPES].map((t, i) =>
+    `<button data-t="${t}" class="${i === 0 ? 'on' : ''}">` +
+    (t === '全部' ? '全部题型' : t + '（' + QBANK.filter(q => q.type === t).length + '）') + '</button>').join('');
   document.getElementById('bAns').innerHTML =
     `<button data-ba="1" class="on">显示答案</button><button data-ba="0">隐藏答案</button>`;
-  document.getElementById('bSec').addEventListener('change', e => { browse.sec = e.target.value; browse.shown = 50; renderBrowse(); });
+  document.getElementById('bSec').addEventListener('click', e => {
+    const b = e.target.closest('button[data-t]'); if (!b) return;
+    browse.sec = b.dataset.t;
+    document.querySelectorAll('#bSec button').forEach(x => x.classList.toggle('on', x === b));
+    movePill(document.getElementById('bSec'));
+    browse.shown = 50; renderBrowse();
+  });
   document.getElementById('bAns').addEventListener('click', e => {
     const b = e.target.closest('button[data-ba]'); if(!b) return;
     browse.showAns = b.dataset.ba === '1';
     document.querySelectorAll('#bAns button').forEach(x => x.classList.toggle('on', x === b));
+    movePill(document.getElementById('bAns'));
     renderBrowse();
   });
   document.getElementById('bSearch').addEventListener('input', e => {
@@ -934,17 +1089,18 @@ function renderBrowse(){
   document.getElementById('bMore').classList.toggle('hidden', all.length <= shown.length);
 }
 function syncBrowseUI(){
-  const sel = document.getElementById('bSec');
-  if (sel) sel.value = browse.sec;
+  document.querySelectorAll('#bSec button').forEach(b => b.classList.toggle('on', b.dataset.t === browse.sec));
   document.querySelectorAll('#bAns button').forEach(b => b.classList.toggle('on', (b.dataset.ba === '1') === browse.showAns));
   const s = document.getElementById('bSearch');
   if (s) s.value = browse.q;
+  refreshPills(false);
 }
 function syncFilterUI(){
-  const sel = document.getElementById('fSec');
-  if (sel) sel.value = practice.sec;
+  document.querySelectorAll('#fSec button').forEach(b => b.classList.toggle('on', b.dataset.t === practice.sec));
   document.querySelectorAll('#fMode button').forEach(b => b.classList.toggle('on', b.dataset.m === practice.mode));
   document.querySelectorAll('#fShuffle button').forEach(b => b.classList.toggle('on', (b.dataset.s === '1') === !!state.settings.shuffle));
+  renderFilterSummary();
+  refreshPills(false);
 }
 function startPracticeAt(id){
   const q = QBANK.find(x => x.id === id);
@@ -1065,8 +1221,13 @@ syncFilterUI();
 syncBrowseUI();
 renderFilterSummary();
 applyFiltersVisibility();
+applyNavVisibility();
 renderHeader();
 renderDash();
+refreshPills(false);
+if (typeof window !== 'undefined' && window.addEventListener){
+  window.addEventListener('resize', () => refreshPills(false));
+}
 if (!storageOk) warnStorage();
 if ('serviceWorker' in navigator && location.protocol.indexOf('http') === 0){
   window.addEventListener('load', function(){ navigator.serviceWorker.register('sw.js').catch(function(){}); });
