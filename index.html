@@ -202,11 +202,40 @@
   .wrong-item .ops { margin-top: 8px; display: flex; gap: 8px; flex-wrap: wrap; }
   .empty-tip { text-align: center; color: var(--muted); padding: 40px 10px; font-size: 15px; }
   .toast {
-    position: fixed; left: 50%; bottom: 30px; transform: translateX(-50%) translateY(20px);
+    position: fixed; left: 50%; bottom: 122px; transform: translateX(-50%) translateY(20px);
     background: #111827; color: #fff; padding: 10px 20px; border-radius: 999px; font-size: 14px;
     opacity: 0; pointer-events: none; transition: all .25s; z-index: 50;
   }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  body { padding-bottom: 104px; }
+  .dock-wrap {
+    position: fixed; left: 0; right: 0; bottom: 14px; z-index: 45;
+    display: flex; justify-content: center; pointer-events: none;
+  }
+  .dock {
+    pointer-events: auto; display: flex; align-items: flex-end; gap: 8px;
+    padding: 9px 12px; border-radius: 20px;
+    background: rgba(255,255,255,.88); border: 1px solid var(--border);
+    box-shadow: 0 12px 32px rgba(15,23,42,.18); backdrop-filter: blur(10px);
+  }
+  .dock-item {
+    position: relative; width: 46px; height: 46px; border: 0; border-radius: 14px; cursor: pointer;
+    background: linear-gradient(150deg, #f1f5f9, #e2e8f0); color: var(--text);
+    font-size: 20px; display: grid; place-items: center; transform-origin: bottom center;
+    transition: transform .16s cubic-bezier(.34,1.56,.64,1), background .2s;
+  }
+  .dock-item:hover { background: linear-gradient(150deg, #dbeafe, #e0e7ff); }
+  .dock-item.active { background: linear-gradient(150deg, #dbeafe, #e0e7ff); }
+  .dock-item.active::after {
+    content: ''; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
+    width: 5px; height: 5px; border-radius: 50%; background: var(--primary);
+  }
+  .dock-tip {
+    position: fixed; bottom: 80px; transform: translateX(-50%) scale(.9);
+    background: #0f172a; color: #fff; font-size: 12.5px; padding: 5px 12px; border-radius: 10px;
+    opacity: 0; transition: .18s; pointer-events: none; white-space: nowrap; z-index: 46;
+  }
+  .dock-tip.show { opacity: 1; transform: translateX(-50%) scale(1); }
   .foot-actions { margin-top: 14px; display: flex; gap: 10px; flex-wrap: wrap; }
   .hidden { display: none !important; }
   .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
@@ -370,6 +399,16 @@
   </section>
 </main>
 
+<div class="dock-tip" id="dockTip"></div>
+<div class="dock-wrap">
+  <div class="dock" id="dock">
+    <button class="dock-item active" data-act="dash" data-name="首页">🏠</button>
+    <button class="dock-item" data-act="practice" data-name="开始练习">✍️</button>
+    <button class="dock-item" data-act="browse" data-name="题目浏览">📚</button>
+    <button class="dock-item" data-act="wrong" data-name="错题本">🧾</button>
+    <button class="dock-item" data-act="reset" data-name="重置进度">↺</button>
+  </div>
+</div>
 <div class="toast" id="toast"></div>
 
 <script>
@@ -506,6 +545,53 @@ function setView(v){
   if (v === 'wrong') renderWrong();
   if (v === 'practice') renderPractice();
   if (v === 'browse') renderBrowse();
+  syncDock();
+}
+/* ---------- 底部停靠栏 ---------- */
+function initDock(){
+  const dock = document.getElementById('dock');
+  const tip = document.getElementById('dockTip');
+  if (!dock) return;
+  const items = [...dock.querySelectorAll('.dock-item')];
+  const RANGE = 92;
+  dock.addEventListener('mousemove', e => {
+    const x = e.clientX;
+    items.forEach(el => {
+      const r = el.getBoundingClientRect();
+      const d = Math.abs(x - (r.left + r.width / 2));
+      const t = Math.max(0, 1 - d / RANGE);
+      const scale = 1 + 0.45 * Math.pow(t, 1.7);
+      const lift = -10 * Math.pow(t, 1.7);
+      el.style.transform = 'scale(' + scale.toFixed(3) + ') translateY(' + lift.toFixed(1) + 'px)';
+    });
+    const hovered = items.find(el => {
+      const r = el.getBoundingClientRect();
+      return x >= r.left && x <= r.right;
+    });
+    if (hovered){
+      tip.textContent = hovered.dataset.name;
+      const r = hovered.getBoundingClientRect();
+      tip.style.left = (r.left + r.width / 2) + 'px';
+      tip.classList.add('show');
+    }
+  });
+  dock.addEventListener('mouseleave', () => {
+    items.forEach(el => { el.style.transform = ''; });
+    tip.classList.remove('show');
+  });
+  items.forEach(el => el.addEventListener('click', () => {
+    const act = el.dataset.act;
+    if (act === 'dash') setView('dash');
+    else if (act === 'practice') setView('practice');
+    else if (act === 'browse'){ syncBrowseUI(); setView('browse'); }
+    else if (act === 'wrong') setView('wrong');
+    else if (act === 'reset') document.getElementById('btnReset').click();
+  }));
+}
+function syncDock(){
+  document.querySelectorAll('#dock .dock-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.act === view);
+  });
 }
 function renderHeader(){
   const s = stats();
@@ -1217,11 +1303,13 @@ function importProgress(e){
 /* ---------- 启动 ---------- */
 initFilters();
 initBrowse();
+initDock();
 syncFilterUI();
 syncBrowseUI();
 renderFilterSummary();
 applyFiltersVisibility();
 applyNavVisibility();
+syncDock();
 renderHeader();
 renderDash();
 refreshPills(false);
