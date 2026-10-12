@@ -790,22 +790,35 @@ function movePill(seg, animate){
   const pill = ensurePill(seg);
   const btn = seg.querySelector('button.on');
   if (!btn){ pill.style.width = '0px'; seg.classList.add('pill-off'); return; }
-  const sr = seg.getBoundingClientRect(), br = btn.getBoundingClientRect();
-  // 容器不可见（display:none）时测不到尺寸，改用兜底底色，避免“白字白底”看不见
-  if (!br.width || !sr.width){
+  // 用 offset 几何：offsetParent 就是 .seg，与高亮块 left/top 的原点完全一致，
+  // 不受边框、换行、滚动影响，宽高与选项完全吻合。
+  const w = btn.offsetWidth, h = btn.offsetHeight;
+  if (!w || !h){
     seg.classList.add('pill-off');
     return;
   }
   seg.classList.remove('pill-off');
-  const left = br.left - sr.left + (seg.scrollLeft || 0);
-  const top = br.top - sr.top + (seg.scrollTop || 0);
   if (animate === false) pill.style.transition = 'none';
-  pill.style.width = br.width + 'px';
-  pill.style.transform = 'translate(' + left + 'px,' + top + 'px)';
+  pill.style.width = w + 'px';
+  pill.style.height = h + 'px';
+  pill.style.transform = 'translate(' + btn.offsetLeft + 'px,' + btn.offsetTop + 'px)';
   if (animate === false){ void pill.offsetWidth; pill.style.transition = ''; }
 }
 function refreshPills(animate){
   document.querySelectorAll('.seg').forEach(seg => movePill(seg, animate));
+}
+/* 尺寸/字体/换行变化后自动重算，避免高亮块与选项尺寸不一致 */
+function watchPills(){
+  if (typeof ResizeObserver === 'function'){
+    const ro = new ResizeObserver(() => refreshPills(false));
+    document.querySelectorAll('.seg').forEach(seg => ro.observe(seg));
+  }
+  if (document.fonts && document.fonts.ready && document.fonts.ready.then){
+    document.fonts.ready.then(() => refreshPills(false));
+  }
+  if (window.addEventListener){
+    window.addEventListener('orientationchange', () => setTimeout(() => refreshPills(false), 260));
+  }
 }
 function renderFilterSummary(){
   const el = document.getElementById('filterSummary');
@@ -1428,6 +1441,7 @@ syncDock();
 renderHeader();
 renderDash();
 refreshPills(false);
+watchPills();
 if (typeof window !== 'undefined' && window.addEventListener){
   window.addEventListener('resize', () => refreshPills(false));
 }
