@@ -239,9 +239,37 @@
     display: flex; justify-content: center; pointer-events: none;
     transition: transform .26s cubic-bezier(.4,0,.2,1), opacity .2s ease;
   }
-  /* 手机上弹出输入法时，底部菜单先让位，收起键盘后自动回来 */
-  body.kb-open .dock-wrap { transform: translateY(130%); opacity: 0; pointer-events: none; }
+  /* 让位：滑动/答题/弹出输入法时收起，回位时带一点回弹 */
+  body.dock-hidden .dock-wrap { transform: translateY(135%) scale(.96); opacity: 0; pointer-events: none; }
+  body.kb-open .dock-wrap { transform: translateY(135%); opacity: 0; pointer-events: none; }
   body.kb-open .dock-tip { display: none; }
+  @keyframes dockPop {
+    0%   { transform: translateY(125%) scale(.94); opacity: 0; }
+    55%  { transform: translateY(-7px) scale(1.035); opacity: 1; }
+    78%  { transform: translateY(2px) scale(.997); }
+    100% { transform: translateY(0) scale(1); }
+  }
+  .dock-wrap.pop { animation: dockPop .46s cubic-bezier(.22,1,.36,1); }
+  @keyframes dockItemPop { from { transform: translateY(13px) scale(.82); opacity: 0; } to { transform: none; opacity: 1; } }
+  .dock-wrap.pop .dock-item { animation: dockItemPop .36s cubic-bezier(.34,1.56,.64,1) backwards; }
+  .dock-wrap.pop .dock-item:nth-child(1) { animation-delay: .05s; }
+  .dock-wrap.pop .dock-item:nth-child(2) { animation-delay: .09s; }
+  .dock-wrap.pop .dock-item:nth-child(3) { animation-delay: .13s; }
+  .dock-wrap.pop .dock-item:nth-child(4) { animation-delay: .17s; }
+  .dock-wrap.pop .dock-item:nth-child(5) { animation-delay: .21s; }
+  /* 菜单收起时留在底部的小把手，点它就回来 */
+  .dock-handle {
+    position: fixed; left: 50%; bottom: 10px; z-index: 44;
+    width: 62px; height: 26px; padding: 0; border-radius: 13px; cursor: pointer;
+    border: 1px solid var(--border); background: rgba(255,255,255,.94);
+    box-shadow: 0 6px 18px rgba(18,58,140,.22); backdrop-filter: blur(8px);
+    display: flex; align-items: center; justify-content: center; color: var(--primary-deep);
+    transform: translateX(-50%) translateY(160%); opacity: 0; pointer-events: none;
+    transition: transform .26s cubic-bezier(.34,1.4,.6,1), opacity .2s ease;
+  }
+  .dock-handle svg { width: 17px; height: 17px; display: block; }
+  body.dock-hidden .dock-handle { transform: translateX(-50%) translateY(0); opacity: 1; pointer-events: auto; }
+  body.kb-open .dock-handle { transform: translateX(-50%) translateY(160%); opacity: 0; pointer-events: none; }
   .dock {
     pointer-events: auto; display: flex; align-items: flex-end; gap: 8px;
     padding: 9px 12px; border-radius: 20px;
@@ -532,6 +560,10 @@
 </main>
 
 <div class="dock-tip" id="dockTip"></div>
+<button class="dock-handle" id="dockHandle" type="button" aria-label="显示底部菜单">
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3"
+       stroke-linecap="round" stroke-linejoin="round"><path d="M6 15l6-6 6 6"/></svg>
+</button>
 <div class="sheet-mask hidden" id="installSheet">
   <div class="sheet" role="dialog" aria-modal="true" aria-label="添加到手机桌面">
     <div class="sheet-head">
@@ -788,6 +820,9 @@ function setView(v){
   if (v === 'practice') renderPractice();
   if (v === 'browse') renderBrowse();
   syncDock();
+  /* 切换板块一定把菜单请回来，避免上一页让位后一直不出现 */
+  clearTimeout(dockBackTimer);
+  setDockHidden(false);
   /* 视图从隐藏变为可见后重新测量高亮块，避免首个选项看不到字 */
   if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => refreshPills(false));
   else refreshPills(false);
@@ -838,6 +873,69 @@ function syncDock(){
     el.classList.toggle('active', el.dataset.act === view);
   });
 }
+/* ---------- 底部菜单自动让位：滑动/答题时收起，需要时再回来 ---------- */
+var dockBackTimer = null;
+function popDock(){
+  const wrap = document.querySelector('.dock-wrap');
+  if (!wrap) return;
+  wrap.classList.remove('pop');
+  void wrap.offsetWidth;          /* 强制重排，让动画能重新播放 */
+  wrap.classList.add('pop');
+  clearTimeout(popDock._h);
+  popDock._h = setTimeout(() => wrap.classList.remove('pop'), 780);
+}
+function setDockHidden(hide){
+  if (!document.body) return;
+  const isHidden = document.body.classList.contains('dock-hidden');
+  if (hide){
+    /* 正在回弹归位时又要让位：先掐掉回弹动画，否则会压住收起动画 */
+    const wrap = document.querySelector('.dock-wrap');
+    if (wrap && wrap.classList.contains('pop')){
+      clearTimeout(popDock._h);
+      wrap.classList.remove('pop');
+    }
+    if (!isHidden) document.body.classList.add('dock-hidden');
+  } else if (isHidden){
+    document.body.classList.remove('dock-hidden');
+    popDock();                    /* 回位时弹一下 */
+  }
+}
+/* 答题等操作后先让位，过一会儿自动回来 */
+function nudgeDockAway(ms){
+  setDockHidden(true);
+  clearTimeout(dockBackTimer);
+  dockBackTimer = setTimeout(() => setDockHidden(false), ms || 1800);
+}
+function initDockAutoHide(){
+  if (typeof window === 'undefined' || !window.addEventListener) return;
+  const pageY = () => window.pageYOffset ||
+    (document.documentElement && document.documentElement.scrollTop) ||
+    (document.body && document.body.scrollTop) || 0;
+  let lastY = pageY();
+  const backSoon = () => {
+    clearTimeout(dockBackTimer);
+    dockBackTimer = setTimeout(() => setDockHidden(false), 900);
+  };
+  window.addEventListener('scroll', () => {
+    const y = pageY();
+    const dy = y - lastY;
+    lastY = y;
+    if (dy <= -3 || y < 60) setDockHidden(false);  /* 往上滑或已在顶部：立刻回来 */
+    else if (dy >= 3) setDockHidden(true);         /* 往下滑：让位 */
+    backSoon();                                    /* 停下来一会儿也自动回来 */
+  }, { passive: true });
+
+  const handle = document.getElementById('dockHandle');
+  if (handle) handle.addEventListener('click', () => {
+    clearTimeout(dockBackTimer);
+    setDockHidden(false);
+  });
+
+  /* 答题过程中的点击（选项、提交、下一题、题号…）都让位，随后自动回来 */
+  const vp = document.getElementById('viewPractice');
+  if (vp) vp.addEventListener('click', () => nudgeDockAway(1800), true);
+}
+
 /* ---------- 手机上弹输入法时收起底部菜单，键盘收起来再还原 ---------- */
 function initKeyboardHide(){
   if (!document.body) return;
@@ -860,7 +958,13 @@ function initKeyboardHide(){
     } else if (!typing()){
       baseH = window.innerHeight || baseH;
     }
+    const wasOpen = document.body.classList.contains('kb-open');
     document.body.classList.toggle('kb-open', hide);
+    /* 键盘收起后一定把菜单请回来（哪怕刚接完题还在“让位”倒计时里） */
+    if (wasOpen && !hide){
+      clearTimeout(dockBackTimer);
+      setDockHidden(false);
+    }
   };
   const soon = () => setTimeout(apply, 60);
   document.addEventListener('focusin', soon, true);
@@ -1410,6 +1514,7 @@ function renderDots(){
   }));
 }
 function nextQ(){
+  nudgeDockAway(1600);
   if (practice.idx < practice.queue.length - 1){ practice.idx++; }
   else {
     if (practice.mode === 'wrong'){ showToast('已练完一遍，错题本已按最新错误率重新排序'); setView('wrong'); return; }
@@ -1420,6 +1525,7 @@ function nextQ(){
   renderPractice();
 }
 function prevQ(){
+  nudgeDockAway(1600);
   if (practice.idx > 0){
     practice.idx--;
     practice.answered = false; practice.revealed = false;
@@ -1762,6 +1868,7 @@ function initInstall(){
 initFilters();
 initBrowse();
 initDock();
+initDockAutoHide();
 initKeyboardHide();
 const resumedSession = restoreSession();
 syncFilterUI();
