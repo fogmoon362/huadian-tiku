@@ -114,12 +114,14 @@
   .seg .pill {
     position: absolute; top: 0; left: 0; height: 100%; width: 0; border-radius: 7px;
     background: linear-gradient(135deg, var(--primary), var(--primary-mid)); z-index: 0; pointer-events: none;
-    transition: transform .38s cubic-bezier(.34,1.56,.64,1), width .38s cubic-bezier(.34,1.56,.64,1);
+    will-change: transform, width;
+    transition: transform .28s cubic-bezier(.32,1.32,.56,1), width .28s cubic-bezier(.32,1.32,.56,1);
   }
   .seg button {
     position: relative; z-index: 1; border: none; background: transparent; padding: 7px 14px;
     font-size: 13px; cursor: pointer; color: var(--text); white-space: nowrap;
-    transition: color .25s;
+    /* 与高亮块同长：文字变色的节奏跟得上滑块的位移，避免“白字白底”闪一下 */
+    transition: color .28s cubic-bezier(.32,1.32,.56,1);
   }
   .seg button.on { color: #fff; font-weight: 600; }
   /* 高亮块尚未测量出来时的兜底，避免“白字白底”看不见 */
@@ -235,7 +237,11 @@
   .dock-wrap {
     position: fixed; left: 0; right: 0; bottom: 14px; z-index: 45;
     display: flex; justify-content: center; pointer-events: none;
+    transition: transform .26s cubic-bezier(.4,0,.2,1), opacity .2s ease;
   }
+  /* 手机上弹出输入法时，底部菜单先让位，收起键盘后自动回来 */
+  body.kb-open .dock-wrap { transform: translateY(130%); opacity: 0; pointer-events: none; }
+  body.kb-open .dock-tip { display: none; }
   .dock {
     pointer-events: auto; display: flex; align-items: flex-end; gap: 8px;
     padding: 9px 12px; border-radius: 20px;
@@ -832,6 +838,41 @@ function syncDock(){
     el.classList.toggle('active', el.dataset.act === view);
   });
 }
+/* ---------- 手机上弹输入法时收起底部菜单，键盘收起来再还原 ---------- */
+function initKeyboardHide(){
+  if (!document.body) return;
+  let baseH = window.innerHeight || 0;
+  const typing = () => {
+    const el = document.activeElement;
+    return !!el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' ||
+                    el.tagName === 'SELECT' || el.isContentEditable === true);
+  };
+  const apply = () => {
+    let hide = false;
+    if (typing() && isNarrow()){
+      const vv = window.visualViewport;
+      if (vv && vv.height > 0){
+        if (baseH - vv.height > 120) hide = true;          // 键盘确实把可视区顶掉了
+        else if (baseH < 40) hide = true;                  // 还没量到基准高度，先按聚焦处理
+      } else {
+        hide = true;                                        // 老浏览器：聚焦就收起
+      }
+    } else if (!typing()){
+      baseH = window.innerHeight || baseH;
+    }
+    document.body.classList.toggle('kb-open', hide);
+  };
+  const soon = () => setTimeout(apply, 60);
+  document.addEventListener('focusin', soon, true);
+  document.addEventListener('focusout', soon, true);
+  window.addEventListener('resize', apply);
+  window.addEventListener('orientationchange', () => setTimeout(apply, 260));
+  if (window.visualViewport){
+    window.visualViewport.addEventListener('resize', apply);
+    window.visualViewport.addEventListener('scroll', apply);
+  }
+  apply();
+}
 function renderHeader(){
   const s = stats();
   const bc = document.getElementById('bankCount');
@@ -943,6 +984,14 @@ function movePill(seg, animate){
 function refreshPills(animate){
   document.querySelectorAll('.seg').forEach(seg => movePill(seg, animate));
 }
+/* 先让滑块动起来，再做重绘。手机上点击后同步重建大量 DOM 会占住主线程，
+ * 动画就会被冻住、看起来“卡一下/跳一下”，所以等滑块滑到位再重绘。 */
+const PILL_MS = 310;   /* 略大于 CSS 里的 .28s，确保动画已结束 */
+let pillTaskId = 0;
+function afterPill(fn){
+  const id = ++pillTaskId;
+  setTimeout(() => { if (id === pillTaskId) fn(); }, PILL_MS);
+}
 /* 尺寸/字体/换行变化后自动重算，避免高亮块与选项尺寸不一致 */
 function watchPills(){
   if (typeof ResizeObserver === 'function'){
@@ -968,6 +1017,9 @@ function applyFiltersVisibility(){
   if (!box || !btn) return;
   box.classList.toggle('hidden', !filtersOpen);
   btn.textContent = filtersOpen ? '收起筛选 ▴' : '筛选设置 ▾';
+  /* 面板从隐藏变为可见后重新量一次，否则手机上滑块尺寸/位置会是 0 */
+  refreshPills(false);
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => refreshPills(false));
 }
 function initFilters(){
   document.getElementById('fSec').innerHTML = ['全部', ...TYPES].map((t, i) =>
@@ -983,14 +1035,16 @@ function initFilters(){
     practice.sec = b.dataset.t;
     document.querySelectorAll('#fSec button').forEach(x => x.classList.toggle('on', x === b));
     movePill(document.getElementById('fSec'));
-    renderFilterSummary(); renderPractice();
+    renderFilterSummary();
+    afterPill(() => renderPractice());
   });
   document.getElementById('fMode').addEventListener('click', e => {
     const b = e.target.closest('button[data-m]'); if(!b) return;
     practice.mode = b.dataset.m;
     document.querySelectorAll('#fMode button').forEach(x => x.classList.toggle('on', x === b));
     movePill(document.getElementById('fMode'));
-    renderFilterSummary(); buildQueue(); renderPractice();
+    renderFilterSummary();
+    afterPill(() => { buildQueue(); renderPractice(); });
   });
   document.getElementById('fShuffle').addEventListener('click', e => {
     const b = e.target.closest('button[data-s]'); if(!b) return;
@@ -1000,7 +1054,8 @@ function initFilters(){
     movePill(document.getElementById('fShuffle'));
     practice.orders = {}; practice.runId++;
     practice.answered = false; practice.selected = new Set(); practice.result = null;
-    renderFilterSummary(); renderPractice();
+    renderFilterSummary();
+    afterPill(() => renderPractice());
   });
   document.getElementById('btnNavToggle').addEventListener('click', () => {
     navOpen = !navOpen;
@@ -1386,14 +1441,15 @@ function initBrowse(){
     browse.sec = b.dataset.t;
     document.querySelectorAll('#bSec button').forEach(x => x.classList.toggle('on', x === b));
     movePill(document.getElementById('bSec'));
-    browse.shown = 50; renderBrowse();
+    browse.shown = 50;
+    afterPill(() => renderBrowse());
   });
   document.getElementById('bAns').addEventListener('click', e => {
     const b = e.target.closest('button[data-ba]'); if(!b) return;
     browse.showAns = b.dataset.ba === '1';
     document.querySelectorAll('#bAns button').forEach(x => x.classList.toggle('on', x === b));
     movePill(document.getElementById('bAns'));
-    renderBrowse();
+    afterPill(() => renderBrowse());
   });
   document.getElementById('bSearch').addEventListener('input', e => {
     browse.q = e.target.value.trim(); browse.shown = 50; renderBrowse();
@@ -1706,6 +1762,7 @@ function initInstall(){
 initFilters();
 initBrowse();
 initDock();
+initKeyboardHide();
 const resumedSession = restoreSession();
 syncFilterUI();
 syncBrowseUI();
