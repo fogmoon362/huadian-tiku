@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="theme-color" content="#1e3a8a">
+<meta name="theme-color" content="#123a8c">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
@@ -15,20 +15,25 @@
 <title>运维部10月业务知识考试题</title>
 <style>
   :root {
-    --primary: #2563eb;
-    --primary-soft: #dbeafe;
-    --ok: #16a34a;
-    --ok-soft: #dcfce7;
-    --bad: #dc2626;
-    --bad-soft: #fee2e2;
-    --warn: #d97706;
-    --warn-soft: #fef3c7;
-    --bg: #f3f4f6;
+    /* 黄金三分法配色：60% 浅蓝底 / 30% 深蓝主色 / 10% 金色点缀 */
+    --bg: #edf3ff;          /* 60% —— 大面积背景 */
     --card: #ffffff;
-    --border: #e5e7eb;
-    --text: #1f2937;
-    --muted: #6b7280;
-    --radius: 12px;
+    --border: #d6e2f8;
+    --primary-deep: #123a8c; /* 30% —— 深蓝主色域 */
+    --primary: #1d4ed8;
+    --primary-mid: #3b82f6;
+    --primary-soft: #e3ecff;
+    --gold: #f5a524;         /* 10% —— 金色点缀 */
+    --gold-soft: #fff3dc;
+    --ok: #0e9f6e;
+    --ok-soft: #e2f7ef;
+    --bad: #dc2626;
+    --bad-soft: #fdeaea;
+    --warn: #d97706;
+    --warn-soft: #fff4e3;
+    --text: #17233d;
+    --muted: #61708c;
+    --radius: 14px;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body {
@@ -39,22 +44,26 @@
     line-height: 1.7;
   }
   header {
-    background: linear-gradient(120deg, #1e3a8a, #2563eb);
+    background: linear-gradient(120deg, var(--primary-deep), var(--primary));
     color: #fff; padding: 14px 22px; position: sticky; top: 0; z-index: 20;
     box-shadow: 0 2px 8px rgba(0,0,0,.15);
   }
   .header-inner { max-width: 1060px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 10px 16px; align-items: center; }
-  .brand { font-size: 18px; font-weight: 700; letter-spacing: .5px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 18px; font-weight: 700; letter-spacing: .5px; }
   .brand small { display: block; font-weight: 400; font-size: 12px; opacity: .85; margin-top: 2px; }
   .spacer { flex: 1; }
   .chips { display: flex; gap: 8px; flex-wrap: wrap; }
   .actions { display: flex; gap: 8px; flex-wrap: wrap; }
-  .nav-toggle { display: none; }
   .chip {
     background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.25);
     border-radius: 999px; padding: 4px 12px; font-size: 13px; white-space: nowrap;
   }
   .chip b { font-size: 15px; margin-left: 2px; }
+  .chip.gold { background: rgba(245,165,36,.22); border-color: rgba(245,165,36,.45); }
+  .brand-mascot {
+    width: 40px; height: 40px; flex: 0 0 40px; border-radius: 12px;
+    background: #fff; padding: 3px; box-shadow: 0 3px 10px rgba(6,22,60,.22);
+  }
   .btn {
     border: none; border-radius: 8px; padding: 8px 16px; font-size: 14px; cursor: pointer;
     background: #fff; color: var(--text); transition: filter .15s, transform .05s;
@@ -88,14 +97,19 @@
   .bar > i.partial { background: linear-gradient(90deg, #f59e0b, #d97706); }
   .bar-row .pct { width: 56px; text-align: right; font-size: 13px; color: var(--muted); }
   .filter-bar { display: flex; flex-wrap: wrap; gap: 10px 18px; align-items: center; margin-bottom: 16px; }
+  .filter-bar > div { min-width: 0; }
   .filter-bar label { font-size: 13px; color: var(--muted); margin-right: 6px; }
+  .seg.scroll { max-width: 100%; }
+  .wrong-item, .wrong-item .meta, .q-text, .analysis, .option .txt, .answer-body,
+  .mega-card, .cmdk-row .t { overflow-wrap: anywhere; word-break: break-word; }
+  html, body { max-width: 100%; overflow-x: hidden; }
   .seg {
     position: relative; display: inline-flex; border: 1px solid var(--border);
     border-radius: 9px; overflow: hidden; background: #fff;
   }
   .seg .pill {
     position: absolute; top: 0; left: 0; height: 100%; width: 0; border-radius: 7px;
-    background: linear-gradient(135deg, #3b82f6, #6366f1); z-index: 0; pointer-events: none;
+    background: linear-gradient(135deg, var(--primary), var(--primary-mid)); z-index: 0; pointer-events: none;
     transition: transform .38s cubic-bezier(.34,1.56,.64,1), width .38s cubic-bezier(.34,1.56,.64,1);
   }
   .seg button {
@@ -104,6 +118,11 @@
     transition: color .25s;
   }
   .seg button.on { color: #fff; font-weight: 600; }
+  /* 高亮块尚未测量出来时的兜底，避免“白字白底”看不见 */
+  .seg.pill-off button.on {
+    background: linear-gradient(135deg, var(--primary), var(--primary-mid));
+    border-radius: 7px;
+  }
   .seg.scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
   .seg.scroll::-webkit-scrollbar { height: 4px; }
   .seg.scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 2px; }
@@ -215,20 +234,23 @@
   .dock {
     pointer-events: auto; display: flex; align-items: flex-end; gap: 8px;
     padding: 9px 12px; border-radius: 20px;
-    background: rgba(255,255,255,.88); border: 1px solid var(--border);
-    box-shadow: 0 12px 32px rgba(15,23,42,.18); backdrop-filter: blur(10px);
+    background: rgba(255,255,255,.93); border: 1px solid var(--border);
+    box-shadow: 0 12px 32px rgba(18,58,140,.20); backdrop-filter: blur(10px);
   }
   .dock-item {
     position: relative; width: 46px; height: 46px; border: 0; border-radius: 14px; cursor: pointer;
-    background: linear-gradient(150deg, #f1f5f9, #e2e8f0); color: var(--text);
-    font-size: 20px; display: grid; place-items: center; transform-origin: bottom center;
+    background: linear-gradient(150deg, #eef4ff, #dee9fd); color: var(--primary-deep);
+    display: grid; place-items: center; transform-origin: bottom center;
     transition: transform .16s cubic-bezier(.34,1.56,.64,1), background .2s;
   }
-  .dock-item:hover { background: linear-gradient(150deg, #dbeafe, #e0e7ff); }
-  .dock-item.active { background: linear-gradient(150deg, #dbeafe, #e0e7ff); }
+  .dock-item svg { width: 23px; height: 23px; display: block; }
+  .dock-item:hover { background: linear-gradient(150deg, #e0eaff, #cfe0ff); }
+  .dock-item.active {
+    background: linear-gradient(150deg, var(--primary), var(--primary-mid)); color: #fff;
+  }
   .dock-item.active::after {
     content: ''; position: absolute; bottom: -7px; left: 50%; transform: translateX(-50%);
-    width: 5px; height: 5px; border-radius: 50%; background: var(--primary);
+    width: 5px; height: 5px; border-radius: 50%; background: var(--gold);
   }
   .dock-tip {
     position: fixed; bottom: 80px; transform: translateX(-50%) scale(.9);
@@ -245,13 +267,14 @@
     .brand { font-size: 15px; }
     .brand small { display: none; }
     .chips { display: none; }
-    .actions { display: none; width: 100%; gap: 6px; }
-    .actions.open { display: flex; }
-    .actions .btn { padding: 6px 12px; font-size: 13px; }
-    .nav-toggle { display: inline-flex; padding: 6px 12px; font-size: 13px; }
+    .brand-mascot { width: 34px; height: 34px; flex: 0 0 34px; }
+    /* 手机端：筛选栏改为纵向排布，避免挤压与横向溢出 */
+    .filter-bar { flex-direction: column; align-items: stretch; gap: 8px; }
+    .filter-bar > div { display: flex; align-items: center; gap: 8px; min-width: 0; }
+    .filter-bar > div > .seg { flex: 1 1 auto; min-width: 0; }
+    #bSearch { width: 100%; min-width: 0 !important; }
     main { margin: 10px auto 40px; padding: 0 10px; }
     .card { padding: 12px; }
-    .filter-bar { gap: 8px 14px; margin-bottom: 10px; }
     .filter-bar label { font-size: 12px; margin-right: 4px; }
     .seg button { padding: 6px 11px; font-size: 12px; }
     .practice-head { gap: 8px; margin-bottom: 8px; }
@@ -266,19 +289,24 @@
 <body>
 <header>
   <div class="header-inner">
-    <div class="brand">运维部10月业务知识考试题
-      <small>592 题 · 答题进度 · 错题收集 · 答案解析</small>
+    <div class="brand">
+      <svg class="brand-mascot" viewBox="0 0 48 48" aria-hidden="true">
+        <rect x="0" y="0" width="48" height="48" rx="13" fill="#123a8c"/>
+        <rect x="11" y="14" width="26" height="24" rx="9" fill="#f5f9ff"/>
+        <path d="M24 14V8" stroke="#eaf1ff" stroke-width="2.6" stroke-linecap="round"/>
+        <path d="M25.8 3.4 20.6 9.8h4.4l-1.9 5.4 5.5-6.6h-4.3z" fill="#f5a524"/>
+        <circle cx="19.6" cy="24.6" r="2.4" fill="#123a8c"/>
+        <circle cx="28.4" cy="24.6" r="2.4" fill="#123a8c"/>
+        <path d="M20.6 30.6c1.5 1.7 2.6 2.3 3.4 2.3s1.9-.6 3.4-2.3" stroke="#123a8c" stroke-width="2.1" fill="none" stroke-linecap="round"/>
+        <circle cx="16.4" cy="29.4" r="1.9" fill="#ffc48a" opacity=".85"/>
+        <circle cx="31.6" cy="29.4" r="1.9" fill="#ffc48a" opacity=".85"/>
+      </svg>
+      <div>运维部10月业务知识考试题
+        <small>592 题 · 华小电陪你刷题 · 错题收集 · 答案解析</small>
+      </div>
     </div>
     <div class="spacer"></div>
     <div class="chips" id="headChips"></div>
-    <div class="actions" id="navActions">
-      <button class="btn" id="btnDash">首页</button>
-      <button class="btn primary" id="btnPractice">开始练习</button>
-      <button class="btn" id="btnBrowse">题目浏览</button>
-      <button class="btn" id="btnWrong">错题本</button>
-      <button class="btn danger" id="btnReset">重置进度</button>
-    </div>
-    <button class="btn nav-toggle" id="navToggle">☰ 菜单</button>
   </div>
 </header>
 
@@ -402,11 +430,41 @@
 <div class="dock-tip" id="dockTip"></div>
 <div class="dock-wrap">
   <div class="dock" id="dock">
-    <button class="dock-item active" data-act="dash" data-name="首页">🏠</button>
-    <button class="dock-item" data-act="practice" data-name="开始练习">✍️</button>
-    <button class="dock-item" data-act="browse" data-name="题目浏览">📚</button>
-    <button class="dock-item" data-act="wrong" data-name="错题本">🧾</button>
-    <button class="dock-item" data-act="reset" data-name="重置进度">↺</button>
+    <button class="dock-item active" data-act="dash" data-name="首页（华小电）">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <rect x="3.6" y="6.2" width="16.8" height="14.2" rx="5.2"/>
+        <path d="M12 6.2V3.6"/>
+        <path d="M13.1 1.2 9.6 5.3h3.1l-1.4 3.8 3.9-4.7h-3.1z" fill="currentColor" stroke="none"/>
+        <circle cx="9.1" cy="12.8" r="1.2" fill="currentColor" stroke="none"/>
+        <circle cx="14.9" cy="12.8" r="1.2" fill="currentColor" stroke="none"/>
+        <path d="M9.5 16.4c.8.9 1.7 1.3 2.5 1.3s1.7-.4 2.5-1.3"/>
+      </svg>
+    </button>
+    <button class="dock-item" data-act="practice" data-name="开始练习">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 20h4.2L19 9.2a2.6 2.6 0 0 0-3.7-3.7L4.5 16.3 4 20z"/>
+        <path d="M14.2 6.6 17.4 9.8"/>
+      </svg>
+    </button>
+    <button class="dock-item" data-act="browse" data-name="题目浏览">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4 6.6 12 3l8 3.6-8 3.6z"/>
+        <path d="M4 12.1 12 15.7l8-3.6"/>
+        <path d="M4 17.2 12 20.8l8-3.6"/>
+      </svg>
+    </button>
+    <button class="dock-item" data-act="wrong" data-name="错题本">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M6.6 3.6h10.8a1 1 0 0 1 1 1v15.8L12 16.6l-6.4 3.8V4.6a1 1 0 0 1 1-1z"/>
+        <path d="M12 7.6v5.4M9.3 10.3h5.4" stroke-width="1.6"/>
+      </svg>
+    </button>
+    <button class="dock-item" data-act="reset" data-name="重置进度">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M4.6 12a7.4 7.4 0 1 0 2.5-5.6"/>
+        <path d="M4.2 4.4V9h4.6"/>
+      </svg>
+    </button>
   </div>
 </div>
 <div class="toast" id="toast"></div>
@@ -546,6 +604,9 @@ function setView(v){
   if (v === 'practice') renderPractice();
   if (v === 'browse') renderBrowse();
   syncDock();
+  /* 视图从隐藏变为可见后重新测量高亮块，避免首个选项看不到字 */
+  if (typeof requestAnimationFrame === 'function') requestAnimationFrame(() => refreshPills(false));
+  else refreshPills(false);
 }
 /* ---------- 底部停靠栏 ---------- */
 function initDock(){
@@ -585,7 +646,7 @@ function initDock(){
     else if (act === 'practice') setView('practice');
     else if (act === 'browse'){ syncBrowseUI(); setView('browse'); }
     else if (act === 'wrong') setView('wrong');
-    else if (act === 'reset') document.getElementById('btnReset').click();
+    else if (act === 'reset') resetProgress();
   }));
 }
 function syncDock(){
@@ -673,8 +734,14 @@ function movePill(seg, animate){
   if (!seg) return;
   const pill = ensurePill(seg);
   const btn = seg.querySelector('button.on');
-  if (!btn){ pill.style.width = '0px'; return; }
+  if (!btn){ pill.style.width = '0px'; seg.classList.add('pill-off'); return; }
   const sr = seg.getBoundingClientRect(), br = btn.getBoundingClientRect();
+  // 容器不可见（display:none）时测不到尺寸，改用兜底底色，避免“白字白底”看不见
+  if (!br.width || !sr.width){
+    seg.classList.add('pill-off');
+    return;
+  }
+  seg.classList.remove('pill-off');
   const left = br.left - sr.left + (seg.scrollLeft || 0);
   if (animate === false) pill.style.transition = 'none';
   pill.style.width = br.width + 'px';
@@ -1202,25 +1269,15 @@ function startPracticeAt(id){
   setView('practice');
 }
 
-/* ---------- 全局事件 ---------- */
-document.getElementById('btnDash').addEventListener('click', () => setView('dash'));
-document.getElementById('btnPractice').addEventListener('click', () => setView('practice'));
-document.getElementById('btnBrowse').addEventListener('click', () => { syncBrowseUI(); setView('browse'); });
-document.getElementById('btnWrong').addEventListener('click', () => setView('wrong'));
-document.getElementById('navToggle').addEventListener('click', () => {
-  document.getElementById('navActions').classList.toggle('open');
-});
-document.getElementById('navActions').addEventListener('click', e => {
-  if (e.target.closest('button')) document.getElementById('navActions').classList.remove('open');
-});
-document.getElementById('btnReset').addEventListener('click', () => {
+/* ---------- 全局事件（顶部菜单已取消，导航统一由底部停靠栏负责） ---------- */
+function resetProgress(){
   if (confirm('确定要清空所有答题记录、错题本和笔记吗？此操作不可恢复。')){
     try { localStorage.removeItem(KEY); } catch(e){ warnStorage(); }
     state = {records:{}, excluded:{}, settings: state.settings};
     saveState(); renderHeader(); renderDash();
     showToast('进度已重置');
   }
-});
+}
 document.getElementById('sectionBars').addEventListener('click', e => {
   const b = e.target.closest('[data-browse]');
   if (!b) return;
