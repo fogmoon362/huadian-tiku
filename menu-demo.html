@@ -1,0 +1,513 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>5 种菜单交互演示</title>
+<style>
+  :root{
+    --bg:#0b1020; --card:rgba(255,255,255,.045); --line:rgba(255,255,255,.10);
+    --text:#e8ecf6; --muted:#96a0bb; --accent:#6ea8fe; --accent2:#a78bfa;
+    --ok:#34d399; --warn:#fbbf24; --bad:#fb7185;
+    --radius:16px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+    background:
+      radial-gradient(1100px 600px at 12% -10%, rgba(110,168,254,.16), transparent 60%),
+      radial-gradient(900px 500px at 90% 0%, rgba(167,139,250,.14), transparent 55%),
+      var(--bg);
+    color:var(--text); min-height:100vh; padding:34px 20px 120px; line-height:1.7;
+  }
+  .wrap{max-width:1080px;margin:0 auto}
+  h1{font-size:26px;letter-spacing:.5px;margin-bottom:8px}
+  .lead{color:var(--muted);font-size:14px;margin-bottom:26px}
+  .lead kbd{background:#1b2440;border:1px solid var(--line);border-bottom-width:2px;border-radius:6px;padding:1px 7px;font-size:12px;color:#cbd5f5}
+  .demo{
+    background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:20px 22px 26px; margin-bottom:22px; backdrop-filter:blur(6px);
+    scroll-margin-top:20px;
+  }
+  .demo h2{font-size:16px;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .demo h2 .no{
+    width:24px;height:24px;border-radius:8px;display:grid;place-items:center;font-size:13px;
+    background:linear-gradient(140deg,var(--accent),var(--accent2));color:#0b1020;font-weight:800;
+  }
+  .demo p.desc{color:var(--muted);font-size:13px;margin-bottom:18px}
+  .stage{
+    position:relative; border:1px dashed rgba(255,255,255,.12); border-radius:12px;
+    padding:22px; background:rgba(0,0,0,.18); overflow:hidden;
+  }
+  /* ---------- 1. 滑动高亮块 ---------- */
+  .pill-menu{position:relative;display:inline-flex;gap:4px;padding:6px;border-radius:14px;
+    background:#141b31;border:1px solid var(--line)}
+  .pill{position:absolute;top:6px;left:6px;height:calc(100% - 12px);width:0;border-radius:10px;
+    background:linear-gradient(135deg,rgba(110,168,254,.95),rgba(167,139,250,.95));
+    box-shadow:0 6px 18px rgba(110,168,254,.28);z-index:0;
+    transition:transform .48s cubic-bezier(.34,1.56,.64,1),width .48s cubic-bezier(.34,1.56,.64,1),height .3s ease;}
+  .pill-item{position:relative;z-index:1;border:0;background:transparent;color:var(--muted);
+    font:inherit;font-size:14px;padding:9px 18px;border-radius:10px;cursor:pointer;white-space:nowrap;
+    transition:color .25s}
+  .pill-item.active{color:#08111f;font-weight:700}
+  /* ---------- 2. 就地展开子菜单 ---------- */
+  .side{max-width:330px}
+  .side-item{border-radius:12px;overflow:hidden}
+  .side-head{width:100%;display:flex;align-items:center;gap:10px;border:0;background:transparent;
+    color:var(--text);font:inherit;font-size:14px;padding:11px 12px;border-radius:12px;cursor:pointer;text-align:left}
+  .side-head:hover{background:rgba(255,255,255,.05)}
+  .side-head.on{background:rgba(110,168,254,.12);color:#dbe7ff}
+  .arrow{display:inline-block;transition:transform .35s cubic-bezier(.34,1.56,.64,1);color:var(--muted)}
+  .side-item.open .arrow{transform:rotate(90deg);color:var(--accent)}
+  .badge{margin-left:auto;font-size:11px;color:var(--muted);background:rgba(255,255,255,.07);
+    border-radius:999px;padding:1px 8px}
+  .side-sub{max-height:0;overflow:hidden;transition:max-height .42s cubic-bezier(.22,1,.36,1);
+    margin-left:16px;border-left:2px solid rgba(110,168,254,.35);padding-left:0}
+  .side-item.open .side-sub{padding-left:12px}
+  .side-sub a{display:block;color:var(--muted);text-decoration:none;font-size:13px;padding:8px 6px;border-radius:8px;
+    opacity:0;transform:translateX(-8px);
+    transition:opacity .35s ease, transform .35s cubic-bezier(.34,1.56,.64,1), background .2s;
+    transition-delay:0s}
+  .side-sub a:hover{background:rgba(255,255,255,.06);color:var(--text)}
+  .side-item.open .side-sub a{opacity:1;transform:none;transition-delay:calc(var(--i) * 55ms)}
+  /* ---------- 3. 顶部横排 + 下落面板 ---------- */
+  .mega{position:relative}
+  .mega-nav{display:flex;gap:6px;padding:6px;border-radius:14px;background:#141b31;border:1px solid var(--line)}
+  .mega-nav button{border:0;background:transparent;color:var(--muted);font:inherit;font-size:14px;
+    padding:9px 18px;border-radius:10px;cursor:pointer;transition:.2s}
+  .mega-nav button.on{background:rgba(110,168,254,.16);color:#dbe7ff}
+  .mega-panel{position:absolute;left:0;right:0;top:calc(100% + 10px);z-index:30;
+    background:#101830;border:1px solid var(--line);border-radius:14px;
+    box-shadow:0 24px 60px rgba(0,0,0,.5);
+    opacity:0;transform:translateY(-8px);pointer-events:none;transition:opacity .22s, transform .28s cubic-bezier(.34,1.56,.64,1)}
+  .mega-panel.open{opacity:1;transform:none;pointer-events:auto}
+  .mega-inner{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;padding:16px}
+  .mega-card{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:12px;cursor:pointer;
+    transition:background .2s, transform .2s}
+  .mega-card:hover{background:rgba(255,255,255,.06);transform:translateY(-2px)}
+  .mega-icon{width:34px;height:34px;flex:0 0 34px;border-radius:10px;display:grid;place-items:center;
+    background:linear-gradient(140deg,rgba(110,168,254,.25),rgba(167,139,250,.25));font-size:17px}
+  .mega-card b{display:block;font-size:14px;font-weight:600}
+  .mega-card span{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+  /* ---------- 4. 底部停靠栏 ---------- */
+  .dock-stage{padding-top:70px;padding-bottom:80px}
+  .dock{position:absolute;left:50%;bottom:18px;transform:translateX(-50%);
+    display:flex;align-items:flex-end;gap:10px;padding:10px 14px;border-radius:20px;
+    background:rgba(20,27,49,.82);border:1px solid var(--line);
+    box-shadow:0 18px 40px rgba(0,0,0,.45);backdrop-filter:blur(10px)}
+  .dock-item{position:relative;width:46px;height:46px;border:0;border-radius:14px;cursor:pointer;
+    background:linear-gradient(150deg,rgba(255,255,255,.10),rgba(255,255,255,.03));
+    color:#e8ecf6;font-size:21px;display:grid;place-items:center;
+    transform-origin:bottom center;transition:transform .18s cubic-bezier(.34,1.56,.64,1), background .2s}
+  .dock-item:hover{background:linear-gradient(150deg,rgba(110,168,254,.35),rgba(167,139,250,.28))}
+  .dock-item.active::after{content:'';position:absolute;bottom:-7px;left:50%;transform:translateX(-50%);
+    width:5px;height:5px;border-radius:50%;background:var(--accent)}
+  .dock-tip{position:absolute;left:50%;bottom:96px;transform:translateX(-50%) scale(.9);
+    background:#0d1425;border:1px solid var(--line);color:var(--text);font-size:12.5px;
+    padding:5px 12px;border-radius:10px;opacity:0;transition:.18s;pointer-events:none;white-space:nowrap}
+  .dock-tip.show{opacity:1;transform:translateX(-50%) scale(1)}
+  /* ---------- 5. 命令面板 ---------- */
+  .cmdk{position:fixed;inset:0;z-index:80;display:none;place-items:start center;padding-top:12vh;
+    background:rgba(6,10,22,.62);backdrop-filter:blur(7px)}
+  .cmdk.open{display:grid}
+  .cmdk-box{width:min(620px,92vw);background:#0f1730;border:1px solid var(--line);border-radius:16px;
+    box-shadow:0 30px 80px rgba(0,0,0,.6);overflow:hidden;animation:pop .22s cubic-bezier(.34,1.56,.64,1)}
+  @keyframes pop{from{opacity:0;transform:translateY(-10px) scale(.98)}to{opacity:1;transform:none}}
+  .cmdk-box input{width:100%;border:0;background:transparent;color:var(--text);font:inherit;font-size:15px;
+    padding:16px 18px;outline:none;border-bottom:1px solid var(--line)}
+  .cmdk-list{max-height:52vh;overflow:auto;padding:8px}
+  .cmdk-row{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;cursor:pointer}
+  .cmdk-row.sel{background:rgba(110,168,254,.16)}
+  .cmdk-row .ic{width:28px;height:28px;border-radius:8px;display:grid;place-items:center;font-size:15px;
+    background:rgba(255,255,255,.07)}
+  .cmdk-row .t{flex:1}
+  .cmdk-row .t b{font-size:14px;font-weight:600;display:block}
+  .cmdk-row .t span{font-size:12px;color:var(--muted)}
+  .cmdk-row mark{background:transparent;color:var(--warn);font-weight:800}
+  .cmdk-row .grp{font-size:11px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 8px}
+  .cmdk-foot{display:flex;gap:14px;justify-content:flex-end;padding:10px 16px;border-top:1px solid var(--line);
+    color:var(--muted);font-size:12px}
+  .cmdk-empty{padding:26px;text-align:center;color:var(--muted);font-size:13px}
+  .btn{background:linear-gradient(135deg,var(--accent),var(--accent2));color:#08111f;border:0;border-radius:10px;
+    padding:9px 16px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer}
+  .hintline{color:var(--muted);font-size:13px;margin-top:12px}
+  @media (max-width:640px){
+    body{padding:20px 12px 120px}
+    .demo{padding:16px 14px 20px}
+    .stage{padding:16px}
+    .pill-item{padding:8px 13px;font-size:13px}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>5 种菜单交互演示</h1>
+  <p class="lead">全部为纯前端实现（无依赖）。任意位置按 <kbd>Ctrl</kbd> + <kbd>K</kbd> 可唤起第 5 个命令面板。</p>
+
+  <section class="demo" id="d1">
+    <h2><span class="no">1</span>滑动高亮块</h2>
+    <p class="desc">当前项用圆角高亮块标识；切换时高亮块从旧位置滑到新位置，宽高跟随目标项变化并带一点回弹。</p>
+    <div class="stage">
+      <div class="pill-menu" id="pillMenu">
+        <span class="pill" id="pill"></span>
+        <button class="pill-item active">概览</button>
+        <button class="pill-item">题库</button>
+        <button class="pill-item">错题本</button>
+        <button class="pill-item">数据统计</button>
+        <button class="pill-item">设置</button>
+      </div>
+      <div class="hintline">点一下试试，也可以按 ← → 键切换。</div>
+    </div>
+  </section>
+
+  <section class="demo" id="d2">
+    <h2><span class="no">2</span>就地展开子菜单</h2>
+    <p class="desc">二级项就地折叠展开，箭头旋转 90°；子项依次错开弹入，左侧用一条细竖线连接；同一时间只展开一组。</p>
+    <div class="stage">
+      <div class="side" id="side">
+        <div class="side-item">
+          <button class="side-head"><span class="arrow">›</span>题库管理<span class="badge">12</span></button>
+          <div class="side-sub">
+            <a href="#" style="--i:0">题目列表</a>
+            <a href="#" style="--i:1">批量导入</a>
+            <a href="#" style="--i:2">标签与分类</a>
+          </div>
+        </div>
+        <div class="side-item">
+          <button class="side-head"><span class="arrow">›</span>练习与错题<span class="badge">8</span></button>
+          <div class="side-sub">
+            <a href="#" style="--i:0">错题本</a>
+            <a href="#" style="--i:1">重练记录</a>
+            <a href="#" style="--i:2">掌握度分析</a>
+            <a href="#" style="--i:3">导出记录</a>
+          </div>
+        </div>
+        <div class="side-item">
+          <button class="side-head"><span class="arrow">›</span>系统设置<span class="badge">3</span></button>
+          <div class="side-sub">
+            <a href="#" style="--i:0">账号与权限</a>
+            <a href="#" style="--i:1">数据备份</a>
+            <a href="#" style="--i:2">外观主题</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="demo" id="d3">
+    <h2><span class="no">3</span>顶部横排 + 下落通栏面板</h2>
+    <p class="desc">导航横排显示，悬停时下落一块通栏面板；子页面分列展示，带图标与一行说明；在菜单项之间移动时面板保持打开，只切换内容。</p>
+    <div class="stage" style="padding-bottom:210px">
+      <div class="mega" id="mega">
+        <nav class="mega-nav" id="megaNav">
+          <button data-panel="0" class="on">题库</button>
+          <button data-panel="1">练习</button>
+          <button data-panel="2">数据</button>
+          <button data-panel="3">系统</button>
+        </nav>
+        <div class="mega-panel" id="megaPanel"><div class="mega-inner" id="megaInner"></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="demo" id="d4">
+    <h2><span class="no">4</span>底部停靠栏菜单</h2>
+    <p class="desc">底部居中的浮动停靠栏，只放图标；悬停时当前图标放大、相邻图标跟随放大，上方显示名称，当前页图标下方带一个小圆点。</p>
+    <div class="stage dock-stage">
+      <div class="dock-tip" id="dockTip"></div>
+      <div class="dock" id="dock">
+        <button class="dock-item active" data-name="首页">🏠</button>
+        <button class="dock-item" data-name="题库">📚</button>
+        <button class="dock-item" data-name="练习">✍️</button>
+        <button class="dock-item" data-name="错题本">🧾</button>
+        <button class="dock-item" data-name="统计">📊</button>
+        <button class="dock-item" data-name="设置">⚙️</button>
+      </div>
+    </div>
+  </section>
+
+  <section class="demo" id="d5">
+    <h2><span class="no">5</span>命令面板</h2>
+    <p class="desc">按快捷键在屏幕中央弹出，背景压暗并模糊；输入实时过滤菜单项、高亮匹配文字；支持 ↑↓ 选择、回车跳转。</p>
+    <div class="stage">
+      <button class="btn" id="openCmdk">打开命令面板（Ctrl + K）</button>
+      <div class="hintline">提示：打开后输入"题""错""统计"等关键字试试。</div>
+    </div>
+  </section>
+</div>
+
+<div class="cmdk" id="cmdk">
+  <div class="cmdk-box">
+    <input id="cmdkInput" placeholder="搜索菜单或命令…" autocomplete="off">
+    <div class="cmdk-list" id="cmdkList"></div>
+    <div class="cmdk-foot"><span>↑↓ 选择</span><span>Enter 跳转</span><span>Esc 关闭</span></div>
+  </div>
+</div>
+<script>
+window.MENU = {};
+
+/* ---------- 1. 滑动高亮块 ---------- */
+(function () {
+  const menu = document.getElementById('pillMenu');
+  const pill = document.getElementById('pill');
+  const items = [...menu.querySelectorAll('.pill-item')];
+
+  function moveTo(btn, animate) {
+    const m = menu.getBoundingClientRect();
+    const r = btn.getBoundingClientRect();
+    if (animate === false) pill.style.transition = 'none';
+    pill.style.width = r.width + 'px';
+    pill.style.height = r.height + 'px';
+    pill.style.transform = 'translate(' + (r.left - m.left - 6) + 'px,' + (r.top - m.top - 6) + 'px)';
+    if (animate === false) { void pill.offsetWidth; pill.style.transition = ''; }
+  }
+  function select(btn) {
+    if (!btn) return;
+    items.forEach(b => b.classList.toggle('active', b === btn));
+    moveTo(btn, true);
+  }
+  items.forEach(b => b.addEventListener('click', () => select(b)));
+  window.MENU.selectPill = i => select(items[i]);
+  window.MENU.selectPillByName = name => select(items.find(b => b.textContent.trim() === name));
+  window.addEventListener('resize', () => moveTo(menu.querySelector('.pill-item.active'), false));
+  document.addEventListener('keydown', e => {
+    if (document.getElementById('cmdk').classList.contains('open')) return;
+    if (/^(INPUT|TEXTAREA)$/.test((document.activeElement || {}).tagName || '')) return;
+    if (e.key !== 'ArrowRight' && e.key !== 'ArrowLeft') return;
+    const rect = menu.getBoundingClientRect();
+    if (rect.bottom < 0 || rect.top > window.innerHeight) return;
+    e.preventDefault();
+    const i = items.findIndex(b => b.classList.contains('active'));
+    const next = e.key === 'ArrowRight' ? (i + 1) % items.length : (i - 1 + items.length) % items.length;
+    select(items[next]);
+  });
+  requestAnimationFrame(() => moveTo(menu.querySelector('.pill-item.active'), false));
+})();
+
+/* ---------- 2. 就地展开子菜单 ---------- */
+(function () {
+  const side = document.getElementById('side');
+  const groups = [...side.querySelectorAll('.side-item')];
+
+  function closeOne(item) {
+    item.classList.remove('open');
+    item.querySelector('.side-sub').style.maxHeight = '0px';
+    item.querySelector('.side-head').classList.remove('on');
+  }
+  function openOne(item) {
+    item.classList.add('open');
+    item.querySelector('.side-head').classList.add('on');
+    const sub = item.querySelector('.side-sub');
+    sub.style.maxHeight = '0px';
+    requestAnimationFrame(() => { sub.style.maxHeight = (sub.scrollHeight + 24) + 'px'; });
+  }
+  function toggle(item) {
+    const wasOpen = item.classList.contains('open');
+    groups.forEach(closeOne);
+    if (!wasOpen) openOne(item);
+  }
+  groups.forEach(item => item.querySelector('.side-head').addEventListener('click', () => toggle(item)));
+  window.MENU.openSide = i => { groups.forEach(closeOne); openOne(groups[i]); };
+  openOne(groups[0]);
+})();
+
+/* ---------- 3. 顶部横排 + 下落通栏面板 ---------- */
+(function () {
+  const mega = document.getElementById('mega');
+  const nav = document.getElementById('megaNav');
+  const panel = document.getElementById('megaPanel');
+  const inner = document.getElementById('megaInner');
+  const btns = [...nav.querySelectorAll('button')];
+  const DATA = [
+    [
+      { icon: '📚', title: '题库管理', desc: '按题型与知识点维护全部题目' },
+      { icon: '⬆️', title: '批量导入', desc: '支持 Word / Excel 一键导入' },
+      { icon: '🏷️', title: '标签与分类', desc: '用标签体系组织题目' },
+      { icon: '🔍', title: '全文检索', desc: '按题干、选项、答案搜索' }
+    ],
+    [
+      { icon: '✍️', title: '开始练习', desc: '顺序、随机、错题重练' },
+      { icon: '🧾', title: '错题本', desc: '按错误率排序，自动收集' },
+      { icon: '🎯', title: '专项训练', desc: '按薄弱知识点集中突破' },
+      { icon: '⏱️', title: '模拟考试', desc: '限时随机组卷' }
+    ],
+    [
+      { icon: '📊', title: '学习统计', desc: '正确率、进度与趋势' },
+      { icon: '🧭', title: '掌握度分析', desc: '按题型查看掌握情况' },
+      { icon: '🗂️', title: '答题记录', desc: '每次作答明细可回溯' },
+      { icon: '📤', title: '导出报告', desc: '导出进度与错题清单' }
+    ],
+    [
+      { icon: '⚙️', title: '外观设置', desc: '主题、字号与选项乱序' },
+      { icon: '🔐', title: '账号与权限', desc: '成员与访问权限管理' },
+      { icon: '💾', title: '数据备份', desc: '导出 / 导入学习进度' },
+      { icon: '🧩', title: '关于系统', desc: '版本信息与更新说明' }
+    ]
+  ];
+  let hideTimer = null;
+  let current = 0;
+
+  function render(i) {
+    inner.style.opacity = '0';
+    inner.innerHTML = DATA[i].map(x =>
+      '<div class="mega-card"><div class="mega-icon">' + x.icon + '</div>' +
+      '<div><b>' + x.title + '</b><span>' + x.desc + '</span></div></div>').join('');
+    requestAnimationFrame(() => { inner.style.transition = 'opacity .18s'; inner.style.opacity = '1'; });
+  }
+  function show(i) {
+    clearTimeout(hideTimer);
+    current = i;
+    btns.forEach((b, k) => b.classList.toggle('on', k === i));
+    render(i);
+    panel.classList.add('open');
+  }
+  function hideSoon() {
+    clearTimeout(hideTimer);
+    hideTimer = setTimeout(() => panel.classList.remove('open'), 160);
+  }
+  btns.forEach((b, i) => {
+    b.addEventListener('mouseenter', () => show(i));
+    b.addEventListener('focus', () => show(i));
+    b.addEventListener('click', () => show(i));
+  });
+  mega.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+  mega.addEventListener('mouseleave', hideSoon);
+  render(0);
+  window.MENU.showPanel = i => { show(i); mega.scrollIntoView({ block: 'center', behavior: 'smooth' }); };
+})();
+
+/* ---------- 4. 底部停靠栏 ---------- */
+(function () {
+  const dock = document.getElementById('dock');
+  const tip = document.getElementById('dockTip');
+  const stage = dock.parentElement;
+  const items = [...dock.querySelectorAll('.dock-item')];
+  const RANGE = 92;
+
+  function reset() {
+    items.forEach(el => { el.style.transform = ''; });
+    tip.classList.remove('show');
+  }
+  dock.addEventListener('mousemove', e => {
+    const x = e.clientX;
+    items.forEach(el => {
+      const r = el.getBoundingClientRect();
+      const d = Math.abs(x - (r.left + r.width / 2));
+      const t = Math.max(0, 1 - d / RANGE);
+      const scale = 1 + 0.6 * Math.pow(t, 1.7);
+      const lift = -12 * Math.pow(t, 1.7);
+      el.style.transform = 'scale(' + scale.toFixed(3) + ') translateY(' + lift.toFixed(1) + 'px)';
+    });
+    const hovered = items.find(el => {
+      const r = el.getBoundingClientRect();
+      return x >= r.left && x <= r.right;
+    });
+    if (hovered) {
+      const sr = stage.getBoundingClientRect();
+      const hr = hovered.getBoundingClientRect();
+      tip.textContent = hovered.dataset.name;
+      tip.style.left = (hr.left - sr.left + hr.width / 2) + 'px';
+      tip.classList.add('show');
+    }
+  });
+  dock.addEventListener('mouseleave', reset);
+  items.forEach(el => el.addEventListener('click', () => {
+    items.forEach(x => x.classList.toggle('active', x === el));
+  }));
+  window.MENU.selectDock = name => {
+    const el = items.find(x => x.dataset.name === name);
+    if (!el) return;
+    items.forEach(x => x.classList.toggle('active', x === el));
+    stage.scrollIntoView({ block: 'center', behavior: 'smooth' });
+  };
+})();
+
+/* ---------- 5. 命令面板 ---------- */
+(function () {
+  const cmdk = document.getElementById('cmdk');
+  const input = document.getElementById('cmdkInput');
+  const list = document.getElementById('cmdkList');
+  const ITEMS = [
+    { grp: '演示', icon: '1️⃣', title: '滑动高亮块', desc: '圆角高亮块滑动跟随', act: () => scrollToId('d1') },
+    { grp: '演示', icon: '2️⃣', title: '就地展开子菜单', desc: '二级项就地折叠展开', act: () => scrollToId('d2') },
+    { grp: '演示', icon: '3️⃣', title: '顶部下落面板', desc: '横排导航 + 通栏面板', act: () => scrollToId('d3') },
+    { grp: '演示', icon: '4️⃣', title: '底部停靠栏', desc: '图标放大跟随效果', act: () => scrollToId('d4') },
+    { grp: '演示', icon: '5️⃣', title: '命令面板', desc: '快捷键唤起的搜索面板', act: () => scrollToId('d5') },
+    { grp: '导航', icon: '📚', title: '题库管理', desc: '展开侧边菜单中的题库分组', act: () => window.MENU.openSide(0) },
+    { grp: '导航', icon: '🧾', title: '错题本', desc: '选中底部停靠栏的错题本', act: () => window.MENU.selectDock('错题本') },
+    { grp: '导航', icon: '✍️', title: '开始练习', desc: '打开顶部导航的“练习”面板', act: () => window.MENU.showPanel(1) },
+    { grp: '导航', icon: '📊', title: '数据统计', desc: '打开顶部导航的“数据”面板', act: () => window.MENU.showPanel(2) },
+    { grp: '导航', icon: '⚙️', title: '系统设置', desc: '打开顶部导航的“系统”面板', act: () => window.MENU.showPanel(3) },
+    { grp: '命令', icon: '🎯', title: '切换到“概览”', desc: '把高亮块滑到第 1 项', act: () => window.MENU.selectPill(0) },
+    { grp: '命令', icon: '🎯', title: '切换到“题库”', desc: '把高亮块滑到第 2 项', act: () => window.MENU.selectPill(1) },
+    { grp: '命令', icon: '🎯', title: '切换到“错题本”', desc: '把高亮块滑到第 3 项', act: () => window.MENU.selectPill(2) },
+    { grp: '命令', icon: '🎯', title: '切换到“数据统计”', desc: '把高亮块滑到第 4 项', act: () => window.MENU.selectPill(3) }
+  ];
+  let sel = 0;
+  let shown = [];
+
+  function scrollToId(id) {
+    const el = document.getElementById(id);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+  function hl(text, q) {
+    if (!q) return text;
+    const i = text.toLowerCase().indexOf(q.toLowerCase());
+    if (i < 0) return text;
+    return text.slice(0, i) + '<mark>' + text.slice(i, i + q.length) + '</mark>' + text.slice(i + q.length);
+  }
+  function render(q) {
+    shown = ITEMS.filter(it => !q || (it.title + it.desc + it.grp).toLowerCase().indexOf(q.toLowerCase()) >= 0);
+    if (!shown.length) {
+      list.innerHTML = '<div class="cmdk-empty">没有匹配的菜单项</div>';
+      return;
+    }
+    if (sel >= shown.length) sel = shown.length - 1;
+    if (sel < 0) sel = 0;
+    list.innerHTML = shown.map((it, i) =>
+      '<div class="cmdk-row ' + (i === sel ? 'sel' : '') + '" data-i="' + i + '">' +
+      '<div class="ic">' + it.icon + '</div>' +
+      '<div class="t"><b>' + hl(it.title, q) + '</b><span>' + it.desc + '</span></div>' +
+      '<div class="grp">' + it.grp + '</div></div>').join('');
+    const row = list.querySelector('.cmdk-row.sel');
+    if (row && row.scrollIntoView) row.scrollIntoView({ block: 'nearest' });
+  }
+  function open() {
+    cmdk.classList.add('open');
+    input.value = '';
+    sel = 0;
+    render('');
+    setTimeout(() => input.focus(), 30);
+  }
+  function close() { cmdk.classList.remove('open'); }
+  function run(i) {
+    const it = shown[i];
+    if (!it) return;
+    close();
+    setTimeout(() => it.act(), 60);
+  }
+  input.addEventListener('input', () => { sel = 0; render(input.value.trim()); });
+  input.addEventListener('keydown', e => {
+    if (e.key === 'ArrowDown') { e.preventDefault(); sel = Math.min(sel + 1, shown.length - 1); render(input.value.trim()); }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); sel = Math.max(sel - 1, 0); render(input.value.trim()); }
+    else if (e.key === 'Enter') { e.preventDefault(); run(sel); }
+    else if (e.key === 'Escape') { close(); }
+  });
+  list.addEventListener('click', e => {
+    const row = e.target.closest('.cmdk-row');
+    if (row) run(+row.dataset.i);
+  });
+  cmdk.addEventListener('click', e => { if (e.target === cmdk) close(); });
+  document.getElementById('openCmdk').addEventListener('click', open);
+  document.addEventListener('keydown', e => {
+    if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+      e.preventDefault();
+      cmdk.classList.contains('open') ? close() : open();
+    } else if (e.key === 'Escape' && cmdk.classList.contains('open')) {
+      close();
+    }
+  });
+})();
+</script>
+</body>
+</html>
