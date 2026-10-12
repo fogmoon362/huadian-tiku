@@ -289,7 +289,8 @@
       border-radius: 10px; gap: 0;
     }
     .filter-bar .fb-types .seg.scroll button { flex: 0 0 auto; }
-    .filter-bar .fb-others { align-items: center; gap: 8px; }
+    /* 纵向排列时 flex-basis 会变成高度，需复位，否则“答案+搜索”行被撑到 280px */
+    .filter-bar .fb-others { flex: 0 0 auto; width: 100%; align-items: center; gap: 8px; }
     .filter-bar .fb-others .seg { flex: 0 0 auto; }
     .seg .cnt { display: none; }
     .seg button { min-height: 32px; padding: 6px 10px; font-size: 12.5px; }
