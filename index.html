@@ -128,6 +128,7 @@
     border-radius: 7px;
   }
   .seg.scroll { overflow-x: auto; max-width: 100%; -webkit-overflow-scrolling: touch; }
+  .seg .cnt { opacity: .8; }
   .seg.scroll::-webkit-scrollbar { height: 4px; }
   .seg.scroll::-webkit-scrollbar-thumb { background: rgba(0,0,0,.15); border-radius: 2px; }
   select, input[type=search], input[type=text], textarea {
@@ -266,32 +267,81 @@
   .hidden { display: none !important; }
   .hint { font-size: 13px; color: var(--muted); margin-top: 6px; }
   @media (max-width: 640px) {
-    header { padding: 8px 12px; }
+    /* —— 顶栏：紧凑 —— */
+    header { padding: 9px 12px; }
     .header-inner { gap: 6px; }
-    .brand { font-size: 15px; }
+    .brand { font-size: 15px; gap: 8px; }
     .brand small { display: none; }
     .chips { display: none; }
-    .brand-mascot { width: 34px; height: 34px; flex: 0 0 34px; }
-    /* 手机端筛选区：题型自动换行全部可见；答案与搜索同排且不拉长 */
-    .filter-bar { flex-direction: column; align-items: stretch; gap: 10px; }
-    .filter-bar .fb-row { width: 100%; align-items: flex-start; }
+    .brand-mascot { width: 32px; height: 32px; flex: 0 0 32px; }
+
+    /* —— 页面与卡片留白 —— */
+    main { margin: 10px auto 28px; padding: 0 12px; }
+    .card { padding: 12px; border-radius: 12px; }
+    .section-title { font-size: 16px; margin-bottom: 10px; }
+
+    /* —— 筛选区：题型换行平铺；计数隐藏以免选项过宽 —— */
+    .filter-bar { flex-direction: column; align-items: stretch; gap: 9px; margin-bottom: 12px; }
+    .filter-bar .fb-row { width: 100%; align-items: flex-start; gap: 8px; }
+    .filter-bar label { font-size: 12.5px; margin-right: 0; line-height: 32px; flex: 0 0 auto; }
     .filter-bar .fb-types .seg.scroll {
-      flex: 1 1 auto; min-width: 0; flex-wrap: wrap; overflow: visible; border-radius: 10px;
+      flex: 1 1 auto; min-width: 0; flex-wrap: wrap; overflow: visible;
+      border-radius: 10px; gap: 0;
     }
     .filter-bar .fb-types .seg.scroll button { flex: 0 0 auto; }
     .filter-bar .fb-others { align-items: center; gap: 8px; }
     .filter-bar .fb-others .seg { flex: 0 0 auto; }
-    #bSearch { flex: 1 1 auto; min-width: 0 !important; width: auto; }
-    main { margin: 10px auto 40px; padding: 0 10px; }
-    .card { padding: 12px; }
-    .filter-bar label { font-size: 12px; margin-right: 4px; }
-    .seg button { padding: 6px 11px; font-size: 12px; }
-    .practice-head { gap: 8px; margin-bottom: 8px; }
-    .question-text { font-size: 15px; margin: 4px 0 10px; }
-    .option { padding: 9px 11px; margin-bottom: 8px; gap: 8px; }
-    .dot { width: 26px; height: 26px; font-size: 11px; }
-    .dots { gap: 4px; margin-top: 10px; }
-    .bar-row .name { width: 110px; }
+    .seg .cnt { display: none; }
+    .seg button { min-height: 32px; padding: 6px 10px; font-size: 12.5px; }
+    #bSearch { flex: 1 1 auto; min-width: 0 !important; width: auto; height: 34px; padding: 6px 10px; font-size: 13px; }
+
+    /* —— 答题区 —— */
+    .practice-head { gap: 6px 8px; margin-bottom: 8px; }
+    .practice-head .pos { font-size: 14px; }
+    .tag { font-size: 11.5px; padding: 2px 8px; }
+    #qStats { display: none; }
+    .question-text { font-size: 16px; line-height: 1.78; margin: 2px 0 12px; }
+    .option { padding: 10px 11px; margin-bottom: 8px; gap: 9px; border-radius: 10px; }
+    .option .letter { width: 28px; height: 28px; font-size: 14px; }
+    .option .txt { font-size: 14.5px; line-height: 1.65; }
+    .actions-row { gap: 8px; margin-top: 6px; }
+    .actions-row .btn { flex: 1 1 auto; min-height: 40px; }
+    .analysis { padding: 12px; }
+    .analysis .row { font-size: 14px; }
+    .feedback { padding: 12px; }
+
+    /* —— 选题面板 —— */
+    .qnav { margin-top: 12px; padding-top: 10px; }
+    .qnav-head { gap: 6px 8px; }
+    .qnav-head .qnav-title { font-size: 13.5px; }
+    .qnav-head .qnav-info { font-size: 12px; flex: 1 1 100%; order: 3; }
+    .qnav-head .jump { width: 74px; height: 32px; padding: 5px 8px; font-size: 12.5px; }
+    .qnav-head .btn.small { height: 32px; padding: 0 10px; }
+    .dots { gap: 4px; }
+    .dot { width: 27px; height: 27px; font-size: 11px; border-radius: 7px; }
+    .pager { gap: 5px; margin-top: 10px; }
+    .pgbtn { min-width: 32px; height: 30px; padding: 0 8px; font-size: 12px; }
+
+    /* —— 首页统计与题库浏览卡片 —— */
+    .stat-grid { gap: 8px; margin-bottom: 12px; grid-template-columns: repeat(2, 1fr); }
+    .stat { padding: 10px 8px; }
+    .stat .num { font-size: 21px; }
+    .stat .label { font-size: 11.5px; line-height: 1.5; }
+    .bar-row { gap: 8px; margin-bottom: 8px; }
+    .bar-row .name { width: 108px; font-size: 13px; }
+    .bar-row .name small { font-size: 11px; }
+    .wrong-item { padding: 11px; margin-bottom: 9px; }
+    .wrong-item .q-text { font-size: 14px; line-height: 1.7; }
+    .wrong-item .meta { font-size: 11.5px; gap: 8px; }
+    .empty-tip { padding: 28px 10px; font-size: 14px; }
+
+    /* —— 底部停靠栏 —— */
+    .dock-wrap { bottom: 10px; }
+    .dock { padding: 8px 10px; gap: 6px; border-radius: 18px; }
+    .dock-item { width: 44px; height: 44px; border-radius: 13px; }
+    .dock-item svg { width: 21px; height: 21px; }
+    body { padding-bottom: 92px; }
+    .toast { bottom: 112px; }
   }
 </style>
 </head>
@@ -773,7 +823,8 @@ function applyFiltersVisibility(){
 function initFilters(){
   document.getElementById('fSec').innerHTML = ['全部', ...TYPES].map((t, i) =>
     `<button data-t="${t}" class="${i === 0 ? 'on' : ''}">` +
-    (t === '全部' ? '全部题型' : t + '（' + QBANK.filter(q => q.type === t).length + '）') + '</button>').join('');
+    (t === '全部' ? '全部' : t + '<span class="cnt">（' + QBANK.filter(q => q.type === t).length + '）</span>') +
+    '</button>').join('');
   document.getElementById('fMode').innerHTML =
     `<button data-m="seq" class="on">顺序练习</button><button data-m="random">随机练习</button><button data-m="wrong">错题重练</button>`;
   document.getElementById('fShuffle').innerHTML =
@@ -1160,7 +1211,8 @@ function prevQ(){
 function initBrowse(){
   document.getElementById('bSec').innerHTML = ['全部', ...TYPES].map((t, i) =>
     `<button data-t="${t}" class="${i === 0 ? 'on' : ''}">` +
-    (t === '全部' ? '全部题型' : t + '（' + QBANK.filter(q => q.type === t).length + '）') + '</button>').join('');
+    (t === '全部' ? '全部' : t + '<span class="cnt">（' + QBANK.filter(q => q.type === t).length + '）</span>') +
+    '</button>').join('');
   document.getElementById('bAns').innerHTML =
     `<button data-ba="1" class="on">显示答案</button><button data-ba="0">隐藏答案</button>`;
   document.getElementById('bSec').addEventListener('click', e => {
